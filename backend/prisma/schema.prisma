@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────
+
+model User {
+  id            String     @id @default(cuid())
+  email         String?    @unique
+  phone         String?    @unique
+  passwordHash  String?
+  displayName   String
+  avatarUrl     String?
+  role          UserRole   @default(USER)
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+  phoneVerified Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  sessions             Session[]
+  groupMemberships     GroupMember[]
+  khatmaParticipations KhatmaParticipant[]
+  reservedParts        ReservedPart[]
+  createdKhatmas       Khatma[]           @relation("KhatmaCreator")
+  createdGroups        Group[]            @relation("GroupCreator")
+  notifications        Notification[]
+  sentInvitations      Invitation[]       @relation("InvitationSender")
+  receivedInvitations  Invitation[]       @relation("InvitationReceiver")
+  auditLogs            AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  DELETED
+}
+
+// ─────────────────────────────────────────
+// SESSIONS
+// ─────────────────────────────────────────
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  refreshToken String    @unique @db.VarChar(512)
+  deviceInfo   String?
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  revokedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshToken])
+  @@map("sessions")
+}
+
+// ─────────────────────────────────────────
+// GROUPS
+// ─────────────────────────────────────────
+
+model Group {
+  id              String          @id @default(cuid())
+  creatorId       String
+  name            String
+  description     String?
+  avatarUrl       String?
+  visibility      GroupVisibility @default(PUBLIC)
+  requireApproval Boolean         @default(false)
+  maxMembers      Int?
+  inviteCode      String          @unique @default(cuid())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  creator     User          @relation("GroupCreator", fields: [creatorId], references: [id])
+  members     GroupMember[]
+  khatmas     Khatma[]
+  invitations Invitation[]
+
+  @@index([creatorId])
+  @@index([inviteCode])
+  @@map("groups")
+}
+
+model GroupMember {
+  id       String          @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupMemberRole @default(MEMBER)
+  status   MemberStatus    @default(ACTIVE)
+  joinedAt DateTime        @default(now())
+  leftAt   DateTime?
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+enum GroupVisibility {
+  PUBLIC
+  PRIVATE
+  INVITE_ONLY
+}
+
+enum GroupMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  LEFT
+}
+
+// ─────────────────────────────────────────
+// KHATMA
+// ─────────────────────────────────────────
+
+model Khatma {
+  id               String           @id @default(cuid())
+  creatorId        String
+  groupId          String?
+  title            String
+  description      String?
+  type             KhatmaType       @default(COLLECTIVE)
+  status           KhatmaStatus     @default(ACTIVE)
+  visibility       KhatmaVisibility @default(PUBLIC)
+  requireApproval  Boolean          @default(false)
+  allowRepeat      Boolean          @default(false)
+  autoRedistribute Boolean          @default(false)
+  isContinuous     Boolean          @default(false)
+  maxMembers       Int?
+  shareCode        String           @unique @default(cuid())
+  shareEnabled     Boolean          @default(true)
+  startDate        DateTime?
+  endDate          DateTime?
+  completedAt      DateTime?
+  totalParts       Int              @default(30)
+  iteration        Int              @default(1)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deletedAt        DateTime?
+
+  creator      User               @relation("KhatmaCreator", fields: [creatorId], references: [id])
+  group        Group?             @relation(fields: [groupId], references: [id])
+  participants KhatmaParticipant[]
+  parts        QuranPart[]
+  reservedParts ReservedPart[]
+  invitations  Invitation[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
+
+  @@index([creatorId])
+  @@index([groupId])
+  @@index([status])
+  @@index([shareCode])
+  @@index([visibility])
+  @@map("khatmas")
+}
+
+enum KhatmaType {
+  INDIVIDUAL
+  COLLECTIVE
+}
+
+enum KhatmaStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  PAUSED
+}
+
+enum KhatmaVisibility {
+  PUBLIC
+  PRIVATE
+  GROUP_ONLY
+}
+
+// ─────────────────────────────────────────
+// PARTICIPANTS
+// ─────────────────────────────────────────
+
+model KhatmaParticipant {
+  id       String            @id @default(cuid())
+  khatmaId String
+  userId   String
+  role     ParticipantRole   @default(MEMBER)
+  status   ParticipantStatus @default(ACTIVE)
+  joinedAt DateTime          @default(now())
+  leftAt   DateTime?
+
+  khatma        Khatma         @relation(fields: [khatmaId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservedParts ReservedPart[]
+
+  @@unique([khatmaId, userId])
+  @@index([khatmaId])
+  @@index([userId])
+  @@map("khatma_participants")
+}
+
+enum ParticipantRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ParticipantStatus {
+  PENDING
+  ACTIVE
+  LEFT
+  KICKED
+}
+
+// ─────────────────────────────────────────
+// QURAN PARTS
+// ─────────────────────────────────────────
+
+model QuranPart {
+  id         String     @id @default(cuid())
+  khatmaId   String
+  partNumber Int
+  status     PartStatus @default(AVAILABLE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  khatma      Khatma        @relation(fields: [khatmaId], references: [id], onDelete: Cascade)
+  reservation ReservedPart?
+
+  @@unique([khatmaId, partNumber])
+  @@index([khatmaId])
+  @@index([status])
+  @@map("quran_parts")
+}
+
+enum PartStatus {
+  AVAILABLE
+  RESERVED
+  COMPLETED
+}
+
+// ─────────────────────────────────────────
+// RESERVED PARTS
+// ─────────────────────────────────────────
+
+model ReservedPart {
+  id            String            @id @default(cuid())
+  khatmaId      String
+  partId        String            @unique
+  participantId String
+  userId        String
+  status        ReservationStatus @default(RESERVED)
+  reservedAt    DateTime          @default(now())
+  completedAt   DateTime?
+  dueDate       DateTime?
+
+  khatma      Khatma            @relation(fields: [khatmaId], references: [id])
+  part        QuranPart         @relation(fields: [partId], references: [id])
+  participant KhatmaParticipant @relation(fields: [participantId], references: [id])
+  user        User              @relation(fields: [userId], references: [id])
+
+  @@index([khatmaId])
+  @@index([userId])
+  @@index([status])
+  @@map("reserved_parts")
+}
+
+enum ReservationStatus {
+  RESERVED
+  COMPLETED
+  RELEASED
+  REASSIGNED
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  khatmaId  String?
+  type      NotificationType
+  title     String
+  body      String  @db.Text
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  readAt    DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  khatma Khatma? @relation(fields: [khatmaId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  PART_RESERVED
+  PART_COMPLETED
+  KHATMA_COMPLETED
+  KHATMA_JOINED
+  INVITATION_SENT
+  JOIN_APPROVED
+  JOIN_REJECTED
+  DEADLINE_REMINDER
+  PART_RELEASED
+}
+
+// ─────────────────────────────────────────
+// INVITATIONS
+// ─────────────────────────────────────────
+
+model Invitation {
+  id         String           @id @default(cuid())
+  senderId   String
+  receiverId String?
+  khatmaId   String?
+  groupId    String?
+  token      String           @unique @default(cuid())
+  status     InvitationStatus @default(PENDING)
+  expiresAt  DateTime
+  createdAt  DateTime         @default(now())
+  usedAt     DateTime?
+
+  sender   User    @relation("InvitationSender", fields: [senderId], references: [id])
+  receiver User?   @relation("InvitationReceiver", fields: [receiverId], references: [id])
+  khatma   Khatma? @relation(fields: [khatmaId], references: [id])
+  group    Group?  @relation(fields: [groupId], references: [id])
+
+  @@index([token])
+  @@index([receiverId])
+  @@index([status])
+  @@map("invitations")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  REVOKED
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  khatmaId  String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?  @db.Json
+  newData   Json?  @db.Json
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id])
+  khatma Khatma? @relation(fields: [khatmaId], references: [id])
+
+  @@index([userId])
+  @@index([khatmaId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

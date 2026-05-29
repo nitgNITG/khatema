@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F8F5EE;
+  --foreground: #1A1A2E;
+  --primary: #1B6B4A;
+  --primary-foreground: #ffffff;
+  --secondary: #C8A84B;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --card: #ffffff;
+  --destructive: #DC2626;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-destructive: var(--destructive);
+  --font-arabic: var(--font-arabic);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-arabic), 'IBM Plex Sans Arabic', Arial, sans-serif;
+}
