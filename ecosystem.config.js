@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'khatema-backend',
-      cwd: './backend',
+      cwd: '/var/www/html/khatema/backend',
       script: 'node',
       args: 'dist/main.js',
       instances: 1,
@@ -16,7 +16,7 @@ module.exports = {
     },
     {
       name: 'khatema-frontend',
-      cwd: './frontend',
+      cwd: '/var/www/html/khatema/frontend',
       script: 'node',
       args: 'node_modules/.bin/next start -p 3011',
       instances: 1,
