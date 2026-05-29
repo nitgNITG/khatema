@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
@@ -29,14 +29,17 @@ export default function ProfilePage() {
   const [collective, setCollective] = useState<number | null>(null);
   const [individual, setIndividual] = useState<number | null>(null);
 
-  const { data: profile, isLoading } = useQuery({
+  const { data: profile, isLoading } = useQuery<any>({
     queryKey: ['profile'],
     queryFn: () => api.get('/users/me').then((r) => r.data),
-    onSuccess: (data: any) => {
-      setCollective(data.maxCollectiveKhatmas ?? 1);
-      setIndividual(data.maxIndividualKhatmas ?? 1);
-    },
-  } as any);
+  });
+
+  useEffect(() => {
+    if (profile) {
+      setCollective(profile.maxCollectiveKhatmas ?? 1);
+      setIndividual(profile.maxIndividualKhatmas ?? 1);
+    }
+  }, [profile]);
 
   const limitsMutation = useMutation({
     mutationFn: () => api.patch('/users/me/limits', {
