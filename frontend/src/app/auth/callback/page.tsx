@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 
-export default function AuthCallbackPage() {
+function CallbackHandler() {
   const router = useRouter();
   const params = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -38,5 +38,17 @@ export default function AuthCallbackPage() {
         <p className="text-muted">جارٍ تسجيل الدخول...</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    }>
+      <CallbackHandler />
+    </Suspense>
   );
 }
