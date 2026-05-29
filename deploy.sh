@@ -2,7 +2,7 @@
 set -e
 
 REPO="https://github.com/nitgNITG/khatema.git"
-APP_DIR="/var/www/khatema"
+APP_DIR="/var/www/html/khatema"
 BRANCH="${1:-main}"
 
 echo "==> Deploying branch: $BRANCH"
