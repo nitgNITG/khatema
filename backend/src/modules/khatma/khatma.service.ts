@@ -72,6 +72,7 @@ export class KhatmaService {
     const where: Record<string, unknown> = {
       deletedAt: null,
       visibility: query.visibility || 'PUBLIC',
+      type: 'COLLECTIVE',
       ...(query.status && { status: query.status }),
       ...(query.q && { title: { contains: query.q, mode: 'insensitive' } }),
     };
