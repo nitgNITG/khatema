@@ -10,6 +10,22 @@ export class KhatmaService {
 
   async create(userId: string, dto: CreateKhatmaDto) {
     const khatma = await this.db.$transaction(async (tx) => {
+      // Check active khatma limits
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { maxCollectiveKhatmas: true, maxIndividualKhatmas: true },
+      });
+      if (user) {
+        const activeCount = await tx.khatmaParticipant.count({
+          where: { userId, status: 'ACTIVE', khatma: { type: dto.type, status: 'ACTIVE', deletedAt: null } },
+        });
+        const limit = dto.type === 'COLLECTIVE' ? user.maxCollectiveKhatmas : user.maxIndividualKhatmas;
+        const typeLabel = dto.type === 'COLLECTIVE' ? 'الجماعية' : 'الفردية';
+        if (activeCount >= limit) {
+          throw new ConflictException(`وصلت للحد الأقصى للختمات ${typeLabel} (${limit}). يمكنك تغيير الحد من بروفايلك`);
+        }
+      }
+
       const k = await tx.khatma.create({
         data: {
           creatorId: userId,
@@ -127,6 +143,20 @@ export class KhatmaService {
 
     if (existing) throw new ConflictException('أنت عضو بالفعل في هذه الختمة');
 
+    // Check user's collective khatma limit
+    const user = await this.db.user.findUnique({
+      where: { id: userId },
+      select: { maxCollectiveKhatmas: true },
+    });
+    if (user) {
+      const activeCount = await this.db.khatmaParticipant.count({
+        where: { userId, status: 'ACTIVE', khatma: { type: 'COLLECTIVE', status: 'ACTIVE', deletedAt: null } },
+      });
+      if (activeCount >= user.maxCollectiveKhatmas) {
+        throw new ConflictException(`وصلت للحد الأقصى للختمات الجماعية (${user.maxCollectiveKhatmas}). يمكنك تغيير الحد من بروفايلك`);
+      }
+    }
+
     if (khatma.maxMembers) {
       const count = await this.db.khatmaParticipant.count({
         where: { khatmaId, status: 'ACTIVE' },
@@ -201,6 +231,22 @@ export class KhatmaService {
     if (inv.status !== 'PENDING') throw new BadRequestException('تم استخدام هذه الدعوة من قبل');
     if (inv.expiresAt < new Date()) throw new BadRequestException('انتهت صلاحية الدعوة');
     return { khatma: inv.khatma, senderName: inv.sender.displayName, expiresAt: inv.expiresAt };
+  }
+
+  async deleteKhatma(userId: string, khatmaId: string) {
+    const khatma = await this.db.khatma.findFirst({ where: { id: khatmaId, deletedAt: null } });
+    if (!khatma) throw new NotFoundException('الختمة غير موجودة');
+    if (khatma.creatorId !== userId) throw new ForbiddenException('فقط المنشئ يمكنه حذف الختمة');
+    await this.db.khatma.update({ where: { id: khatmaId }, data: { deletedAt: new Date() } });
+    return { success: true, message: 'تم حذف الختمة' };
+  }
+
+  async editKhatma(userId: string, khatmaId: string, data: { title?: string; description?: string }) {
+    const khatma = await this.db.khatma.findFirst({ where: { id: khatmaId, deletedAt: null } });
+    if (!khatma) throw new NotFoundException('الختمة غير موجودة');
+    if (khatma.creatorId !== userId) throw new ForbiddenException('فقط المنشئ يمكنه تعديل الختمة');
+    const updated = await this.db.khatma.update({ where: { id: khatmaId }, data });
+    return { id: updated.id, title: updated.title, description: updated.description };
   }
 
   async updateSettings(khatmaId: string, userId: string, settings: {

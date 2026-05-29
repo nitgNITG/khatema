@@ -18,6 +18,14 @@ export class UsersController {
     return this.users.updateProfile(user.id, body);
   }
 
+  @Patch('me/limits')
+  updateLimits(
+    @CurrentUser() user: any,
+    @Body() body: { maxCollectiveKhatmas?: number; maxIndividualKhatmas?: number },
+  ) {
+    return this.users.updateLimits(user.id, body);
+  }
+
   @Get('me/khatmas')
   getMyKhatmas(@CurrentUser() user: any) {
     return this.users.getMyKhatmas(user.id);

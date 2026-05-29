@@ -56,6 +56,23 @@ export class KhatmaController {
     return this.khatmaService.approveJoin(id, userId, admin.id);
   }
 
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  deleteKhatma(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.khatmaService.deleteKhatma(user.id, id);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  editKhatma(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { title?: string; description?: string },
+  ) {
+    return this.khatmaService.editKhatma(user.id, id, body);
+  }
+
   @Patch(':id/settings')
   @UseGuards(JwtAuthGuard)
   updateSettings(

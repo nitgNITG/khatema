@@ -1,8 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
@@ -24,10 +25,29 @@ function formatDate(dateStr?: string | null) {
 export default function ProfilePage() {
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [collective, setCollective] = useState<number | null>(null);
+  const [individual, setIndividual] = useState<number | null>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
     queryFn: () => api.get('/users/me').then((r) => r.data),
+    onSuccess: (data: any) => {
+      setCollective(data.maxCollectiveKhatmas ?? 1);
+      setIndividual(data.maxIndividualKhatmas ?? 1);
+    },
+  } as any);
+
+  const limitsMutation = useMutation({
+    mutationFn: () => api.patch('/users/me/limits', {
+      maxCollectiveKhatmas: collective,
+      maxIndividualKhatmas: individual,
+    }).then((r) => r.data),
+    onSuccess: () => {
+      toast.success('تم حفظ الإعدادات');
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ'),
   });
 
   const handleLogout = async () => {
@@ -141,6 +161,40 @@ export default function ProfilePage() {
               </div>
             </section>
           )}
+
+          {/* Subscription limits */}
+          <section className="bg-white border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">حدود الاشتراك</h2>
+              <p className="text-xs text-muted mt-0.5">الحد الأقصى للختمات النشطة في نفس الوقت</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'جماعية', value: collective ?? profile.maxCollectiveKhatmas ?? 1, setter: setCollective },
+                { label: 'فردية', value: individual ?? profile.maxIndividualKhatmas ?? 1, setter: setIndividual },
+              ].map(({ label, value, setter }) => (
+                <div key={label}>
+                  <label className="block text-sm font-medium mb-2">{label}</label>
+                  <select
+                    value={value}
+                    onChange={(e) => setter(Number(e.target.value))}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <option key={n} value={n}>{n} {n === 1 ? 'ختمة' : 'ختمات'}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => limitsMutation.mutate()}
+              disabled={limitsMutation.isPending}
+              className="w-full bg-primary text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {limitsMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+            </button>
+          </section>
 
           {profile.activeReservations?.length === 0 && profile.completedParts?.length === 0 && profile.completedKhatmas?.length === 0 && (
             <div className="text-center py-12 text-muted bg-white border border-border rounded-2xl">

@@ -8,7 +8,7 @@ export class UsersService {
   async getProfile(userId: string) {
     const user = await this.db.user.findUnique({
       where: { id: userId, deletedAt: null },
-      select: { id: true, displayName: true, email: true, phone: true, avatarUrl: true, role: true, createdAt: true },
+      select: { id: true, displayName: true, email: true, phone: true, avatarUrl: true, role: true, createdAt: true, maxCollectiveKhatmas: true, maxIndividualKhatmas: true },
     });
     if (!user) throw new NotFoundException('المستخدم غير موجود');
 
@@ -63,6 +63,18 @@ export class UsersService {
         completedAt: p.khatma.completedAt,
       })),
     };
+  }
+
+  async updateLimits(userId: string, data: { maxCollectiveKhatmas?: number; maxIndividualKhatmas?: number }) {
+    const clamp = (n: number) => Math.min(Math.max(1, Math.round(n)), 5);
+    return this.db.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.maxCollectiveKhatmas !== undefined && { maxCollectiveKhatmas: clamp(data.maxCollectiveKhatmas) }),
+        ...(data.maxIndividualKhatmas !== undefined && { maxIndividualKhatmas: clamp(data.maxIndividualKhatmas) }),
+      },
+      select: { maxCollectiveKhatmas: true, maxIndividualKhatmas: true },
+    });
   }
 
   async updateProfile(userId: string, data: { displayName?: string; avatarUrl?: string }) {
