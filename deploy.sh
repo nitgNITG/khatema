@@ -21,9 +21,10 @@ fi
 # ── Backend ──────────────────────────────────────────────────
 echo "==> Building backend..."
 cd "$APP_DIR/backend"
-npm ci --omit=dev
+npm ci
 ./node_modules/.bin/prisma db push
 npm run build
+npm prune --omit=dev
 
 # ── Frontend ─────────────────────────────────────────────────
 echo "==> Building frontend..."
