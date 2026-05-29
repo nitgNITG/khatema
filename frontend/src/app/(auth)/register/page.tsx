@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
@@ -23,9 +23,11 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function RegisterPage() {
+function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const params = useSearchParams();
+  const redirect = params.get('redirect') || '/dashboard';
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -38,7 +40,7 @@ export default function RegisterPage() {
       const res = await api.post('/auth/register', data);
       setAuth(res.data.data.user, res.data.data.accessToken);
       toast.success('تم إنشاء حسابك بنجاح!');
-      router.push('/dashboard');
+      router.push(redirect);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'حدث خطأ، حاول مرة أخرى');
     } finally {
@@ -123,11 +125,19 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-muted mt-6">
           لديك حساب بالفعل؟{' '}
-          <Link href="/login" className="text-primary font-medium hover:underline">
+          <Link href={`/login${redirect !== '/dashboard' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-primary font-medium hover:underline">
             تسجيل الدخول
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }

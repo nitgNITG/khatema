@@ -162,6 +162,30 @@ export class ReservationService {
     };
   }
 
+  async adminUnreserve(adminId: string, khatmaId: string, partId: string) {
+    const participant = await this.db.khatmaParticipant.findUnique({
+      where: { khatmaId_userId: { khatmaId, userId: adminId } },
+    });
+    if (!participant || participant.role !== 'OWNER') {
+      throw new ForbiddenException('فقط منشئ الختمة يمكنه إلغاء الحجز');
+    }
+
+    const reservation = await this.db.reservedPart.findFirst({
+      where: { partId, khatmaId, status: 'RESERVED' },
+      include: { part: true },
+    });
+    if (!reservation) throw new NotFoundException('لا يوجد حجز نشط لهذا الجزء');
+
+    await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.reservedPart.update({ where: { id: reservation.id }, data: { status: 'RELEASED' } });
+      await tx.quranPart.update({ where: { id: partId }, data: { status: 'AVAILABLE' } });
+    });
+
+    this.events.emit('part.unreserved', { khatmaId, partId, partNumber: reservation.part.partNumber });
+
+    return { success: true, message: `تم إلغاء حجز الجزء ${reservation.part.partNumber}` };
+  }
+
   private async handleKhatmaCompletion(khatmaId: string) {
     const khatma = await this.db.khatma.findUnique({ where: { id: khatmaId } });
     if (!khatma) return;

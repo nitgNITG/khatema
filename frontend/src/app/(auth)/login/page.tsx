@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
@@ -17,9 +17,11 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function LoginPage() {
+function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const params = useSearchParams();
+  const redirect = params.get('redirect') || '/dashboard';
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -32,7 +34,7 @@ export default function LoginPage() {
       const res = await api.post('/auth/login', data);
       setAuth(res.data.data.user, res.data.data.accessToken);
       toast.success('مرحباً بك!');
-      router.push('/dashboard');
+      router.push(redirect);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'بيانات الدخول غير صحيحة');
     } finally {
@@ -111,11 +113,19 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-muted mt-6">
           ليس لديك حساب؟{' '}
-          <Link href="/register" className="text-primary font-medium hover:underline">
+          <Link href={`/register${redirect !== '/dashboard' ? `?redirect=${encodeURIComponent(redirect)}` : ''}`} className="text-primary font-medium hover:underline">
             سجل الآن
           </Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
