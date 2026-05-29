@@ -22,7 +22,7 @@ fi
 echo "==> Building backend..."
 cd "$APP_DIR/backend"
 npm ci --omit=dev
-npx prisma db push
+./node_modules/.bin/prisma db push
 npm run build
 
 # ── Frontend ─────────────────────────────────────────────────
