@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Patch, Put,
+  Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Patch,
 } from '@nestjs/common';
 import { KhatmaService } from './khatma.service';
 import { ReservationService } from './reservation.service';
@@ -16,20 +16,46 @@ export class KhatmaController {
     private mailService: MailService,
   ) {}
 
-  @Post()
-  @UseGuards(JwtAuthGuard)
-  create(@Body() dto: CreateKhatmaDto, @CurrentUser() user: any) {
-    return this.khatmaService.create(user.id, dto);
-  }
+  // ── Static routes first (must be before /:id) ──────────────────────
 
   @Get()
   findAll(@Query() query: any) {
     return this.khatmaService.findAll(query);
   }
 
+  @Get('join/:token')
+  getInvitation(@Param('token') token: string) {
+    return this.khatmaService.getInvitationByToken(token);
+  }
+
+  // ── Dynamic :id routes ─────────────────────────────────────────────
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  create(@Body() dto: CreateKhatmaDto, @CurrentUser() user: any) {
+    return this.khatmaService.create(user.id, dto);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.khatmaService.findById(id, user?.id);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  deleteKhatma(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.khatmaService.deleteKhatma(user.id, id);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  editKhatma(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: { title?: string; description?: string },
+  ) {
+    return this.khatmaService.editKhatma(user.id, id, body);
   }
 
   @Post(':id/join')
@@ -54,23 +80,6 @@ export class KhatmaController {
   @UseGuards(JwtAuthGuard)
   approve(@Param('id') id: string, @Param('userId') userId: string, @CurrentUser() admin: any) {
     return this.khatmaService.approveJoin(id, userId, admin.id);
-  }
-
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  deleteKhatma(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.khatmaService.deleteKhatma(user.id, id);
-  }
-
-  @Patch(':id')
-  @UseGuards(JwtAuthGuard)
-  editKhatma(
-    @Param('id') id: string,
-    @CurrentUser() user: any,
-    @Body() body: { title?: string; description?: string },
-  ) {
-    return this.khatmaService.editKhatma(user.id, id, body);
   }
 
   @Patch(':id/settings')
@@ -112,12 +121,8 @@ export class KhatmaController {
     return { success: true, inviteUrl: result.inviteUrl, message: 'تم إرسال الدعوة' };
   }
 
-  @Get('join/:token')
-  getInvitation(@Param('token') token: string) {
-    return this.khatmaService.getInvitationByToken(token);
-  }
+  // ── Reservation endpoints ──────────────────────────────────────────
 
-  // Reservation endpoints
   @Post(':id/parts/:partId/reserve')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

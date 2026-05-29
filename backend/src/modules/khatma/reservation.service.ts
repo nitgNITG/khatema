@@ -177,7 +177,7 @@ export class ReservationService {
     if (!reservation) throw new NotFoundException('لا يوجد حجز نشط لهذا الجزء');
 
     await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
-      await tx.reservedPart.update({ where: { id: reservation.id }, data: { status: 'CANCELLED' } });
+      await tx.reservedPart.update({ where: { id: reservation.id }, data: { status: 'RELEASED' } });
       await tx.quranPart.update({ where: { id: partId }, data: { status: 'AVAILABLE' } });
     });
 
