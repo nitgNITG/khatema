@@ -22,7 +22,7 @@ apt install -y redis-server nginx certbot python3-certbot-nginx
 systemctl enable --now redis-server
 
 # Create app directory
-mkdir -p /var/www/khatema
+mkdir -p /var/www/html/khatema
 ```
 
 ---
@@ -48,7 +48,7 @@ git clone -b main https://github.com/nitgNITG/khatema.git
 
 ## 4. Create environment files
 
-### Backend — `/var/www/khatema/backend/.env`
+### Backend — `/var/www/html/khatema/backend/.env`
 ```env
 NODE_ENV=production
 BACKEND_PORT=3001
@@ -72,7 +72,7 @@ SMTP_PASS="your-gmail-app-password"
 SMTP_FROM="ختمة <nit.eg.co@gmail.com>"
 ```
 
-### Frontend — `/var/www/khatema/frontend/.env.local`
+### Frontend — `/var/www/html/khatema/frontend/.env.local`
 ```env
 NEXT_PUBLIC_API_URL=https://khatema.nitg-eg.com/api/v1
 ```
@@ -91,7 +91,7 @@ https://khatema.nitg-eg.com/api/v1/auth/google/callback
 ## 6. Nginx config
 
 ```bash
-cp /var/www/khatema/nginx/khatema.nitg-eg.com.conf /etc/nginx/sites-available/khatema
+cp /var/www/html/khatema/nginx/khatema.nitg-eg.com.conf /etc/nginx/sites-available/khatema
 ln -s /etc/nginx/sites-available/khatema /etc/nginx/sites-enabled/khatema
 rm -f /etc/nginx/sites-enabled/default
 
@@ -113,7 +113,7 @@ systemctl start nginx
 certbot --nginx -d khatema.nitg-eg.com
 
 # Certbot auto-edits the config. Restore the full config:
-cp /var/www/khatema/nginx/khatema.nitg-eg.com.conf /etc/nginx/sites-available/khatema
+cp /var/www/html/khatema/nginx/khatema.nitg-eg.com.conf /etc/nginx/sites-available/khatema
 nginx -t && systemctl reload nginx
 ```
 
@@ -122,8 +122,8 @@ nginx -t && systemctl reload nginx
 ## 8. First deploy
 
 ```bash
-chmod +x /var/www/khatema/deploy.sh
-/var/www/khatema/deploy.sh main
+chmod +x /var/www/html/khatema/deploy.sh
+/var/www/html/khatema/deploy.sh main
 ```
 
 PM2 will start both `khatema-backend` and `khatema-frontend`.
@@ -143,12 +143,12 @@ pm2 save
 
 Every time you push to `main` and want to deploy:
 ```bash
-/var/www/khatema/deploy.sh main
+/var/www/html/khatema/deploy.sh main
 ```
 
 Or from your local machine (add to Makefile or CI):
 ```bash
-ssh root@<VPS_IP> "/var/www/khatema/deploy.sh main"
+ssh root@<VPS_IP> "/var/www/html/khatema/deploy.sh main"
 ```
 
 ---
@@ -169,8 +169,8 @@ systemctl status redis-server   # Redis status
 ## Checklist
 
 - [ ] DNS A record points to VPS IP
-- [ ] `/var/www/khatema/backend/.env` created with real values
-- [ ] `/var/www/khatema/frontend/.env.local` created
+- [ ] `/var/www/html/khatema/backend/.env` created with real values
+- [ ] `/var/www/html/khatema/frontend/.env.local` created
 - [ ] Google OAuth redirect URI updated to production URL
 - [ ] Google OAuth secret regenerated (was exposed in git history)
 - [ ] Gmail App Password rotated
