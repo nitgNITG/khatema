@@ -55,6 +55,18 @@ export default function KhatmaDetailPage() {
     },
   });
 
+  const adminUnreserveMutation = useMutation({
+    mutationFn: (partId: string) =>
+      api.delete(`/khatmas/${id}/parts/${partId}/reservation`).then((r) => r.data),
+    onSuccess: (res) => {
+      toast.success(res.message || 'تم إلغاء الحجز');
+      queryClient.invalidateQueries({ queryKey: ['khatma', id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'حدث خطأ');
+    },
+  });
+
   const inviteMutation = useMutation({
     mutationFn: ({ email, name }: { email: string; name: string }) =>
       api.post(`/khatmas/${id}/invite/email`, { email, name }).then((r) => r.data),
@@ -83,14 +95,21 @@ export default function KhatmaDetailPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'حدث خطأ'),
   });
 
+  const isAdmin = data?.creator?.id === user?.id;
+
   const handlePartClick = (part: QuranPart) => {
     if (part.reservedBy?.id === user?.id && part.status === 'RESERVED') {
-      // Their own reserved part → complete
       if (confirm(`هل أتممت قراءة الجزء ${part.partNumber}؟`)) {
         completeMutation.mutate(part.id);
       }
     } else if (part.status === 'AVAILABLE') {
       setSelectedPart(part);
+    }
+  };
+
+  const handleAdminUnreserve = (part: QuranPart) => {
+    if (confirm(`إلغاء حجز الجزء ${part.partNumber} من ${part.reservedBy?.displayName}؟`)) {
+      adminUnreserveMutation.mutate(part.id);
     }
   };
 
@@ -145,7 +164,9 @@ export default function KhatmaDetailPage() {
           parts={data.parts ?? []}
           myUserId={user?.id}
           onPartClick={handlePartClick}
+          onAdminUnreserve={handleAdminUnreserve}
           isReadOnly={data.status === 'COMPLETED'}
+          isAdmin={isAdmin}
         />
       </div>
 

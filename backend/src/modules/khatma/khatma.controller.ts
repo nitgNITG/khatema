@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Patch,
+  Controller, Get, Post, Body, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Patch, Put,
 } from '@nestjs/common';
 import { KhatmaService } from './khatma.service';
 import { ReservationService } from './reservation.service';
@@ -113,5 +113,12 @@ export class KhatmaController {
   @HttpCode(HttpStatus.OK)
   complete(@Param('id') khatmaId: string, @Param('partId') partId: string, @CurrentUser() user: any) {
     return this.reservationService.complete(user.id, khatmaId, partId);
+  }
+
+  @Delete(':id/parts/:partId/reservation')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  adminUnreserve(@Param('id') khatmaId: string, @Param('partId') partId: string, @CurrentUser() user: any) {
+    return this.reservationService.adminUnreserve(user.id, khatmaId, partId);
   }
 }
