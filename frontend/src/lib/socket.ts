@@ -4,7 +4,9 @@ let socket: Socket | null = null;
 
 export function getSocket(token: string): Socket {
   if (!socket) {
-    socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001', {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+    const wsUrl = apiUrl.replace(/\/api\/v1$/, '');
+    socket = io(wsUrl, {
       auth: { token },
       transports: ['websocket'],
       reconnectionAttempts: 5,
