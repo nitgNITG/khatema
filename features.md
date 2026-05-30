@@ -37,6 +37,7 @@
 | Status tracking | ACTIVE → COMPLETED (automatic when all parts done) |
 | Auto-create parts | 30 Quran parts generated automatically on khatma creation |
 | Date pickers on create | `startDate` and `endDate` datetime pickers for collective khatmas (optional) |
+| Manual participant reminder | Owner sends one-click reminder to all participants: end date, remaining parts, fresh invite link |
 
 ---
 
@@ -106,12 +107,14 @@
 | Feature | Details |
 |---------|---------|
 | Socket.IO gateway | JWT-authenticated connection |
+| Per-user private room | Each user auto-joins `user:{id}` room on connect |
 | Khatma rooms | Users auto-join the room for the khatma they're viewing |
-| `part.reserved` event | Broadcast to room when a part is reserved |
-| `part.completed` event | Broadcast to room when a part is completed |
+| `part.reserved` event | Broadcast to khatma room when a part is reserved |
+| `part.completed` event | Broadcast to khatma room when a part is completed |
 | `part.unreserved` event | Broadcast when a reservation is cancelled or admin-released |
-| `khatma.completed` event | Broadcast when all 30 parts are done |
-| `khatma.restarted` event | Broadcast when continuous khatma resets |
+| `khatma.completed` event | Broadcast to khatma room when all 30 parts are done |
+| `khatma.restarted` event | Broadcast to khatma room when continuous khatma resets |
+| `new_notification` event | Pushed to user's private room whenever a notification is created |
 | Frontend hook | `useRealtime(khatmaId)` — React Query invalidation + toast |
 
 ---
@@ -121,10 +124,13 @@
 | Feature | Details |
 |---------|---------|
 | 9 notification types | PART_RESERVED, PART_COMPLETED, KHATMA_COMPLETED, KHATMA_JOINED, INVITATION_SENT, JOIN_APPROVED, JOIN_REJECTED, DEADLINE_REMINDER, PART_RELEASED |
-| Create notification | Triggered by khatma events via EventEmitter |
-| List notifications | Paginated (20/page) |
-| Mark as read | Bulk mark-all-read |
-| Unread count | Returned alongside list |
+| Real-time push | WebSocket `new_notification` event delivered instantly via user private room |
+| Bell icon in header | Sticky navbar bell with red unread badge (99+ cap) |
+| Notification dropdown | Per-type emoji icons, unread dot, khatma deep links, relative timestamps |
+| Mark all read | Bulk mark-all-read from dropdown header |
+| Delete read notifications | One-click clear all read notifications from dropdown |
+| Paginated list | 20/page via `GET /notifications` |
+| Auto-emit on create | `NotificationsService.create()` emits `notification.created` event so gateway forwards it live |
 
 ---
 
@@ -135,6 +141,7 @@
 | Khatma invite email | Sent when owner invites by email; includes khatma title + CTA button |
 | Email OTP | 6-digit verification code with branded HTML template |
 | Deadline reminder | HTML email with hours remaining, end date, link to khatma |
+| Participant reminder | Rich HTML email with end date, remaining parts count, and invite link for sharing |
 | SMTP via Nodemailer | Gmail (or any SMTP) with env-configured credentials |
 | Fallback logging | Logs email content to console if SMTP not configured |
 
@@ -153,6 +160,17 @@
 
 ---
 
+## Admin / Super Admin
+
+| Feature | Details |
+|---------|---------|
+| SUPER_ADMIN role | Assigned via DB; role-guarded endpoints |
+| Reset khatmas | `DELETE /admin/reset/khatmas` — deletes all khatmas and related data; user accounts preserved |
+| Reset everything | `DELETE /admin/reset/all` — full DB wipe including users |
+| Admin panel in profile | Two danger-zone buttons visible only to SUPER_ADMIN users; double-confirm dialogs |
+
+---
+
 ## API Endpoints
 
 ### Auth — `/auth/*`
@@ -164,8 +182,6 @@
 | POST | `/auth/logout` | Revoke session |
 | POST | `/auth/send-email-otp` | Resend email verification OTP (auth required) |
 | POST | `/auth/verify-email` | Verify OTP → mark email verified |
-| POST | `/auth/send-otp` | Phone OTP (backend only) |
-| POST | `/auth/verify-otp` | Verify phone OTP |
 | GET  | `/auth/me` | Current user info |
 | GET  | `/auth/google` | Redirect to Google consent |
 | GET  | `/auth/google/callback` | Google OAuth callback |
@@ -189,6 +205,7 @@
 | POST   | `/khatmas/:id/parts/:partId/complete` | Mark part complete |
 | DELETE | `/khatmas/:id/parts/:partId/my-reservation` | Cancel own reservation |
 | DELETE | `/khatmas/:id/parts/:partId/reservation` | Admin unreserve any part |
+| POST   | `/khatmas/:id/notify` | Owner sends manual reminder to all participants |
 
 ### Users — `/users/*`
 | Method | Endpoint | Description |
@@ -203,7 +220,14 @@
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET    | `/notifications` | Paginated list + unread count |
-| PATCH  | `/notifications/mark-all-read` | Mark all read |
+| PATCH  | `/notifications/mark-all-read` | Mark all notifications as read |
+| DELETE | `/notifications/read` | Delete all read notifications |
+
+### Admin — `/admin/*`
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| DELETE | `/admin/reset/khatmas` | Delete all khatmas (keep users) — SUPER_ADMIN only |
+| DELETE | `/admin/reset/all` | Delete all data including users — SUPER_ADMIN only |
 
 ---
 
@@ -230,9 +254,9 @@
 | Feature | Notes |
 |---------|-------|
 | Password reset | "Forgot password" link present, no backend flow |
-| Notification bell UI | Backend + data model ready, no navbar component |
-| Admin dashboard | No UI for admin/moderator role management |
-| Group feature | Schema ready, no routes or UI |
 | Profile image upload | Uses Google avatar or initials fallback |
+| Admin dashboard | Full UI for user/role management; SUPER_ADMIN panel exists but is minimal |
+| Group feature | Schema ready, no routes or UI |
 | Dark mode | Tailwind dark class set up, not wired |
 | OTP phone login UI | Backend endpoint ready, no frontend page |
+| Search & filter khatmas | Discover list has no search or filter yet |

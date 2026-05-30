@@ -4,9 +4,49 @@ All notable changes to Khatema are documented here.
 
 ---
 
-## [Unreleased] — In Progress
+## [1.6.0] — 2026-05-30 — Notifications Bell, Real-Time Push, Admin Panel
 
-- Pending: JWT secret rotation on VPS
+### Added
+
+**Notification Bell UI**
+- Bell icon in the dashboard navbar with live red unread badge (99+ cap)
+- Dropdown with full notification list: per-type emoji icons, unread dot, relative timestamps, khatma deep links
+- "تعليم الكل كمقروء" — mark all as read
+- "حذف المقروءة" — delete all read notifications (new `DELETE /notifications/read` endpoint)
+
+**Real-Time Notification Push (WebSocket)**
+- Each user auto-joins a private room `user:{id}` on socket connect
+- `NotificationsService.create()` emits `notification.created` event after every DB write
+- `KhatmaGateway` listens and pushes `new_notification` to the user's private room instantly
+- `khatma.completed` notifications converted from `createMany` to per-user `create()` loop so all fire real-time events
+
+**Manual Participant Reminder**
+- Owner sends one-click reminder from khatma detail page
+- Sends in-app notification + rich HTML email to all active participants
+- Email includes: end date, remaining parts count, and a fresh 7-day invite link
+- Invite link shown in owner panel with copy button after sending
+- `POST /khatmas/:id/notify` endpoint
+
+**Super Admin Panel**
+- `SUPER_ADMIN` role guarded by `RolesGuard`
+- `DELETE /admin/reset/khatmas` — deletes all khatmas + related data, keeps user accounts
+- `DELETE /admin/reset/all` — full DB wipe including users
+- Danger-zone panel in profile page, visible only to SUPER_ADMIN; double-confirm dialogs
+
+### Fixed
+
+**Build & Production Fixes**
+- `rootDir: src` added to `tsconfig.json` — `dist/main.js` now at correct path for `node dist/main` and PM2
+- `prisma/**/*.ts` excluded from `tsconfig.build.json` — scripts outside `src/` no longer break the build
+- Webpack enabled in `nest-cli.json` — `@/` path aliases resolved at build time, no runtime `MODULE_NOT_FOUND` errors
+- Prisma transaction timeout raised from 5 s to 15 s (maxWait: 10 s) — eliminates intermittent 500 errors under slow DB connections
+- `notifyBeforeHours` column: MySQL default `'[24]'` applied via `ALTER TABLE` — `NULL constraint violation` on register resolved
+
+---
+
+## [1.5.0] — 2026-05-30 — Manual Notify, Build Fixes
+
+> Rolled into 1.6.0 above.
 
 ---
 
