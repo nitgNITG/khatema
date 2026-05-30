@@ -3,11 +3,16 @@ import {
 } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
 import { MailService } from '@/modules/mail/mail.service';
+import { NotificationsService } from '@/modules/notifications/notifications.service';
 import { CreateKhatmaDto } from './dto/create-khatma.dto';
 
 @Injectable()
 export class KhatmaService {
-  constructor(private db: DatabaseService, private mail: MailService) {}
+  constructor(
+    private db: DatabaseService,
+    private mail: MailService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async create(userId: string, dto: CreateKhatmaDto) {
     const khatma = await this.db.$transaction(async (tx) => {
@@ -399,15 +404,13 @@ export class KhatmaService {
       const { user } = p as any;
       if (!user?.email) continue;
 
-      await this.db.notification.create({
-        data: {
-          userId: user.id,
-          khatmaId,
-          type: 'DEADLINE_REMINDER',
-          title: `تذكير: ختمة "${khatma.title}"`,
-          body: `${remainingParts} جزء متبقٍ — ${khatma.endDate ? `تنتهي ${new Date(khatma.endDate).toLocaleDateString('ar-SA')}` : 'شارك الرابط مع أصحابك'}`,
-        },
-      });
+      await this.notificationsService.create(
+        user.id,
+        'DEADLINE_REMINDER',
+        `تذكير: ختمة "${khatma.title}"`,
+        `${remainingParts} جزء متبقٍ — ${khatma.endDate ? `تنتهي ${new Date(khatma.endDate).toLocaleDateString('ar-SA')}` : 'شارك الرابط مع أصحابك'}`,
+        khatmaId,
+      );
 
       this.mail.sendParticipantReminder({
         toEmail: user.email,

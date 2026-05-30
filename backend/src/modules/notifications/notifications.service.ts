@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { DatabaseService } from '@/database/database.service';
-import { OnEvent } from '@nestjs/event-emitter';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private events: EventEmitter2) {}
 
   async getNotifications(userId: string, page = 1, limit = 20) {
     const skip = (page - 1) * limit;
@@ -35,9 +35,11 @@ export class NotificationsService {
   }
 
   async create(userId: string, type: string, title: string, body: string, khatmaId?: string) {
-    return this.db.notification.create({
+    const notification = await this.db.notification.create({
       data: { userId, type: type as any, title, body, khatmaId },
     });
+    this.events.emit('notification.created', { userId, notification });
+    return notification;
   }
 
   @OnEvent('khatma.completed')
@@ -47,14 +49,8 @@ export class NotificationsService {
       select: { userId: true },
     });
 
-    await this.db.notification.createMany({
-      data: participants.map((p: { userId: string }) => ({
-        userId: p.userId,
-        type: 'KHATMA_COMPLETED' as any,
-        title: 'اكتملت الختمة 🎉',
-        body: 'أتممتم ختم القرآن الكريم! جزاكم الله خيراً',
-        khatmaId: payload.khatmaId,
-      })),
-    });
+    for (const p of participants) {
+      await this.create(p.userId, 'KHATMA_COMPLETED', 'اكتملت الختمة 🎉', 'أتممتم ختم القرآن الكريم! جزاكم الله خيراً', payload.khatmaId);
+    }
   }
 }
