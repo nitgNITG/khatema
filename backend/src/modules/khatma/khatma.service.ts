@@ -267,9 +267,15 @@ export class KhatmaService {
     if (!khatma) throw new NotFoundException('الختمة غير موجودة');
     if (khatma.creatorId !== userId) throw new ForbiddenException('فقط المنشئ يمكنه تعديل الختمة');
 
-    if (data.startDate !== undefined && data.endDate !== undefined &&
-        data.startDate && data.endDate &&
-        new Date(data.endDate) <= new Date(data.startDate)) {
+    // Compute effective dates after the update (fall back to current DB values)
+    const effectiveStart = 'startDate' in data
+      ? (data.startDate ? new Date(data.startDate) : null)
+      : khatma.startDate;
+    const effectiveEnd = 'endDate' in data
+      ? (data.endDate ? new Date(data.endDate) : null)
+      : khatma.endDate;
+
+    if (effectiveStart && effectiveEnd && effectiveEnd <= effectiveStart) {
       throw new BadRequestException('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية');
     }
 
