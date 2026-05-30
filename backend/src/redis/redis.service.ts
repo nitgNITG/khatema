@@ -10,10 +10,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private config: ConfigService) {}
 
   onModuleInit() {
-    this.client = new Redis(this.config.get<string>('REDIS_URL', 'redis://localhost:6379'), {
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-    });
+    const redisUrl = this.config.get<string>('REDIS_URL', 'redis://localhost:6379');
+    const password = this.config.get<string>('REDIS_PASSWORD');
+    this.client = password
+      ? new Redis({ host: 'localhost', port: 6379, password, maxRetriesPerRequest: 3, lazyConnect: true })
+      : new Redis(redisUrl, { maxRetriesPerRequest: 3, lazyConnect: true });
     this.client.on('error', (err) => this.logger.error('Redis error', err));
   }
 
