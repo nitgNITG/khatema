@@ -34,6 +34,13 @@ export class NotificationsService {
     return { success: true };
   }
 
+  async deleteReadNotifications(userId: string) {
+    const { count } = await this.db.notification.deleteMany({
+      where: { userId, isRead: true },
+    });
+    return { success: true, deleted: count };
+  }
+
   async create(userId: string, type: string, title: string, body: string, khatmaId?: string) {
     const notification = await this.db.notification.create({
       data: { userId, type: type as any, title, body, khatmaId },
