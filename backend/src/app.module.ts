@@ -11,6 +11,7 @@ import { KhatmaModule } from './modules/khatma/khatma.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -26,6 +27,7 @@ import { AppController } from './app.controller';
     GroupsModule,
     NotificationsModule,
     WebsocketModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

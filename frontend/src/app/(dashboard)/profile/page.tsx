@@ -74,6 +74,29 @@ export default function ProfilePage() {
     onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ'),
   });
 
+  const resetKhatmasMutation = useMutation({
+    mutationFn: () => api.delete('/admin/reset/khatmas').then((r) => r.data),
+    onSuccess: (data: any) => toast.success(data.message || 'تم حذف جميع الختمات'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ'),
+  });
+
+  const resetAllMutation = useMutation({
+    mutationFn: () => api.delete('/admin/reset/all').then((r) => r.data),
+    onSuccess: (data: any) => toast.success(data.message || 'تم حذف جميع البيانات'),
+    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ'),
+  });
+
+  const handleResetKhatmas = () => {
+    if (!confirm('سيتم حذف جميع الختمات نهائياً. المستخدمون لن يتأثروا. هل أنت متأكد؟')) return;
+    resetKhatmasMutation.mutate();
+  };
+
+  const handleResetAll = () => {
+    if (!confirm('سيتم حذف جميع البيانات بما في ذلك المستخدمين. لا يمكن التراجع. هل أنت متأكد؟')) return;
+    if (!confirm('تأكيد أخير: حذف كل شيء بما في ذلك الحسابات؟')) return;
+    resetAllMutation.mutate();
+  };
+
   const handleLogout = async () => {
     try { await api.post('/auth/logout'); } catch {}
     clearAuth();
@@ -315,6 +338,29 @@ export default function ProfilePage() {
           )}
         </>
       ) : null}
+
+      {user?.role === 'SUPER_ADMIN' && (
+        <section className="bg-white border border-red-200 rounded-2xl p-5 space-y-3">
+          <div>
+            <h2 className="font-semibold text-red-700">لوحة الإدارة</h2>
+            <p className="text-xs text-muted mt-0.5">عمليات خطيرة — لا يمكن التراجع عنها</p>
+          </div>
+          <button
+            onClick={handleResetKhatmas}
+            disabled={resetKhatmasMutation.isPending}
+            className="w-full border border-red-300 text-red-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors"
+          >
+            {resetKhatmasMutation.isPending ? 'جارٍ الحذف...' : 'حذف جميع الختمات (الحسابات تبقى)'}
+          </button>
+          <button
+            onClick={handleResetAll}
+            disabled={resetAllMutation.isPending}
+            className="w-full bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors"
+          >
+            {resetAllMutation.isPending ? 'جارٍ الحذف...' : 'حذف كل شيء بما في ذلك المستخدمين'}
+          </button>
+        </section>
+      )}
     </div>
   );
 }
