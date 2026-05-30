@@ -121,4 +121,54 @@ export class MailService {
       `,
     });
   }
+
+  async sendParticipantReminder(opts: {
+    toEmail: string;
+    displayName: string;
+    khatmaTitle: string;
+    endDate?: Date | null;
+    remainingParts: number;
+    totalParts: number;
+    khatmaUrl: string;
+    inviteUrl: string;
+  }) {
+    const { toEmail, displayName, khatmaTitle, endDate, remainingParts, totalParts, khatmaUrl, inviteUrl } = opts;
+
+    const endDateLine = endDate
+      ? `<p>📅 <strong>تاريخ انتهاء الختمة:</strong> ${endDate.toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' })}</p>`
+      : '';
+
+    const body = `
+      <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #2d6a4f;">تذكير بختمة "${khatmaTitle}"</h2>
+        <p>السلام عليكم ${displayName},</p>
+        <p>تذكير من صاحب الختمة بشأن ختمة <strong>"${khatmaTitle}"</strong>.</p>
+        ${endDateLine}
+        <p>📖 <strong>الأجزاء المتبقية:</strong> ${remainingParts} من أصل ${totalParts} جزءاً لم تُحجز بعد.</p>
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="${khatmaUrl}" style="background-color: #2d6a4f; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; display: inline-block; margin-bottom: 12px;">
+            افتح الختمة
+          </a>
+        </div>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #555; font-size: 14px;">هل تعرف أحداً يريد المشاركة؟ شارك هذا الرابط:</p>
+        <p style="word-break: break-all; font-size: 13px; background: #f5f5f5; padding: 10px; border-radius: 6px; direction: ltr;">
+          <a href="${inviteUrl}" style="color: #2d6a4f;">${inviteUrl}</a>
+        </p>
+      </div>
+    `;
+
+    if (!this.transporter) {
+      this.logger.log(`[MAIL] Participant reminder to ${toEmail} for khatma "${khatmaTitle}"`);
+      return;
+    }
+
+    const from = this.config.get<string>('SMTP_FROM', 'ختمة <noreply@khatema.app>');
+    await this.transporter.sendMail({
+      from,
+      to: toEmail,
+      subject: `تذكير: ختمة "${khatmaTitle}" — ${remainingParts} جزء لم يُحجز بعد`,
+      html: body,
+    });
+  }
 }
