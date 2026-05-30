@@ -25,6 +25,8 @@ export default function KhatmaDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
 
   // Real-time updates
   useRealtime(id);
@@ -105,7 +107,7 @@ export default function KhatmaDetailPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: (data: { title: string; description: string }) =>
+    mutationFn: (data: { title: string; description: string; startDate: string | null; endDate: string | null }) =>
       api.patch(`/khatmas/${id}`, data).then((r) => r.data),
     onSuccess: () => {
       toast.success('تم التعديل');
@@ -234,10 +236,16 @@ export default function KhatmaDetailPage() {
           {/* Edit title/description */}
           {!editMode ? (
             <button
-              onClick={() => { setEditTitle(data.title); setEditDescription(data.description ?? ''); setEditMode(true); }}
+              onClick={() => {
+                setEditTitle(data.title);
+                setEditDescription(data.description ?? '');
+                setEditStartDate(data.startDate ? new Date(data.startDate).toISOString().slice(0, 16) : '');
+                setEditEndDate(data.endDate ? new Date(data.endDate).toISOString().slice(0, 16) : '');
+                setEditMode(true);
+              }}
               className="w-full text-right p-3 rounded-xl border border-border hover:bg-gray-50 text-sm font-medium transition-colors"
             >
-              ✏️ تعديل الاسم والوصف
+              ✏️ تعديل الاسم والتواريخ
             </button>
           ) : (
             <div className="space-y-3 p-3 border border-primary/30 rounded-xl bg-primary/5">
@@ -254,9 +262,34 @@ export default function KhatmaDetailPage() {
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 placeholder="الوصف (اختياري)"
               />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ البداية</label>
+                  <input
+                    type="datetime-local"
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ الانتهاء</label>
+                  <input
+                    type="datetime-local"
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="w-full border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => editMutation.mutate({ title: editTitle, description: editDescription })}
+                  onClick={() => editMutation.mutate({
+                    title: editTitle,
+                    description: editDescription,
+                    startDate: editStartDate || null,
+                    endDate: editEndDate || null,
+                  })}
                   disabled={!editTitle.trim() || editMutation.isPending}
                   className="flex-1 bg-primary text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-50"
                 >
@@ -272,14 +305,14 @@ export default function KhatmaDetailPage() {
           {/* Delete khatma */}
           <button
             onClick={() => {
-              if (confirm(`هل أنت متأكد من حذف "${data.title}"؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+              if (confirm(`سيتم حذف "${data.title}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.`)) {
                 deleteMutation.mutate();
               }
             }}
             disabled={deleteMutation.isPending}
             className="w-full p-3 rounded-xl border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/5 disabled:opacity-50 transition-colors"
           >
-            {deleteMutation.isPending ? 'جارٍ الحذف...' : '🗑️ حذف الختمة'}
+            {deleteMutation.isPending ? 'جارٍ الحذف...' : '🗑️ حذف الختمة نهائياً'}
           </button>
         </div>
       )}

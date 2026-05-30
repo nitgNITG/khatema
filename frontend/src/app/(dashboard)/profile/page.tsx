@@ -29,6 +29,8 @@ export default function ProfilePage() {
   const [collective, setCollective] = useState<number | null>(null);
   const [individual, setIndividual] = useState<number | null>(null);
   const [notifyHours, setNotifyHours] = useState<number[]>([24]);
+  const [activeSort, setActiveSort] = useState<'khatma' | 'date-asc' | 'date-desc' | 'part-asc' | 'part-desc'>('khatma');
+  const [completedSort, setCompletedSort] = useState<'khatma' | 'date-asc' | 'date-desc' | 'part-asc' | 'part-desc'>('khatma');
 
   const { data: profile, isLoading } = useQuery<any>({
     queryKey: ['profile'],
@@ -123,47 +125,100 @@ export default function ProfilePage() {
           </div>
 
           {/* Active reservations */}
-          {profile.activeReservations?.length > 0 && (
-            <section className="bg-white border border-border rounded-2xl p-5 space-y-3">
-              <h2 className="font-semibold">الأجزاء المحجوزة حالياً</h2>
-              <div className="space-y-2">
-                {profile.activeReservations.map((r: any) => (
-                  <Link key={r.id} href={`/khatma/${r.khatmaId}`}
-                    className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 transition-colors">
-                    <div>
-                      <p className="font-medium text-sm">الجزء {r.partNumber}</p>
-                      <p className="text-xs text-muted">{r.khatmaTitle}</p>
+          {profile.activeReservations?.length > 0 && (() => {
+            const sorted = [...profile.activeReservations].sort((a: any, b: any) => {
+              if (activeSort === 'date-asc') return new Date(a.reservedAt).getTime() - new Date(b.reservedAt).getTime();
+              if (activeSort === 'date-desc') return new Date(b.reservedAt).getTime() - new Date(a.reservedAt).getTime();
+              if (activeSort === 'part-asc') return a.partNumber - b.partNumber;
+              if (activeSort === 'part-desc') return b.partNumber - a.partNumber;
+              return a.khatmaTitle.localeCompare(b.khatmaTitle, 'ar');
+            });
+            const grouped: Record<string, { khatmaId: string; khatmaTitle: string; parts: any[] }> = {};
+            for (const r of sorted) {
+              if (!grouped[r.khatmaId]) grouped[r.khatmaId] = { khatmaId: r.khatmaId, khatmaTitle: r.khatmaTitle, parts: [] };
+              grouped[r.khatmaId].parts.push(r);
+            }
+            return (
+              <section className="bg-white border border-border rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold">الأجزاء المحجوزة حالياً <span className="text-xs text-muted font-normal">({profile.activeReservations.length})</span></h2>
+                  <select value={activeSort} onChange={(e) => setActiveSort(e.target.value as any)}
+                    className="text-xs border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30">
+                    <option value="khatma">ترتيب: الختمة</option>
+                    <option value="part-asc">رقم الجزء ↑</option>
+                    <option value="part-desc">رقم الجزء ↓</option>
+                    <option value="date-desc">الأحدث أولاً</option>
+                    <option value="date-asc">الأقدم أولاً</option>
+                  </select>
+                </div>
+                <div className="space-y-4">
+                  {Object.values(grouped).map((g) => (
+                    <div key={g.khatmaId}>
+                      <Link href={`/khatma/${g.khatmaId}`} className="block text-xs font-semibold text-primary mb-1.5 hover:underline">
+                        {g.khatmaTitle} ({g.parts.length})
+                      </Link>
+                      <div className="space-y-1.5 pr-2 border-r-2 border-primary/20">
+                        {g.parts.map((r: any) => (
+                          <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 border border-border text-sm">
+                            <span className="font-medium">الجزء {r.partNumber}</span>
+                            <span className="text-xs text-muted">{formatDate(r.reservedAt)}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-left text-xs text-muted">
-                      <p>بدأ: {formatDate(r.reservedAt)}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
 
           {/* Completed parts */}
-          {profile.completedParts?.length > 0 && (
-            <section className="bg-white border border-border rounded-2xl p-5 space-y-3">
-              <h2 className="font-semibold">الأجزاء المكتملة</h2>
-              <div className="space-y-2">
-                {profile.completedParts.map((r: any) => (
-                  <Link key={r.id} href={`/khatma/${r.khatmaId}`}
-                    className="flex items-center justify-between p-3 rounded-xl border border-border hover:border-primary/30 transition-colors">
-                    <div>
-                      <p className="font-medium text-sm">الجزء {r.partNumber} ✓</p>
-                      <p className="text-xs text-muted">{r.khatmaTitle}</p>
+          {profile.completedParts?.length > 0 && (() => {
+            const sorted = [...profile.completedParts].sort((a: any, b: any) => {
+              if (completedSort === 'date-asc') return new Date(a.completedAt ?? a.reservedAt).getTime() - new Date(b.completedAt ?? b.reservedAt).getTime();
+              if (completedSort === 'date-desc') return new Date(b.completedAt ?? b.reservedAt).getTime() - new Date(a.completedAt ?? a.reservedAt).getTime();
+              if (completedSort === 'part-asc') return a.partNumber - b.partNumber;
+              if (completedSort === 'part-desc') return b.partNumber - a.partNumber;
+              return a.khatmaTitle.localeCompare(b.khatmaTitle, 'ar');
+            });
+            const grouped: Record<string, { khatmaId: string; khatmaTitle: string; parts: any[] }> = {};
+            for (const r of sorted) {
+              if (!grouped[r.khatmaId]) grouped[r.khatmaId] = { khatmaId: r.khatmaId, khatmaTitle: r.khatmaTitle, parts: [] };
+              grouped[r.khatmaId].parts.push(r);
+            }
+            return (
+              <section className="bg-white border border-border rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-semibold">الأجزاء المكتملة <span className="text-xs text-muted font-normal">({profile.completedParts.length})</span></h2>
+                  <select value={completedSort} onChange={(e) => setCompletedSort(e.target.value as any)}
+                    className="text-xs border border-border rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary/30">
+                    <option value="khatma">ترتيب: الختمة</option>
+                    <option value="part-asc">رقم الجزء ↑</option>
+                    <option value="part-desc">رقم الجزء ↓</option>
+                    <option value="date-desc">الأحدث أولاً</option>
+                    <option value="date-asc">الأقدم أولاً</option>
+                  </select>
+                </div>
+                <div className="space-y-4">
+                  {Object.values(grouped).map((g) => (
+                    <div key={g.khatmaId}>
+                      <Link href={`/khatma/${g.khatmaId}`} className="block text-xs font-semibold text-green-700 mb-1.5 hover:underline">
+                        {g.khatmaTitle} ({g.parts.length})
+                      </Link>
+                      <div className="space-y-1.5 pr-2 border-r-2 border-green-200">
+                        {g.parts.map((r: any) => (
+                          <div key={r.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-green-50 border border-green-100 text-sm">
+                            <span className="font-medium text-green-800">الجزء {r.partNumber} ✓</span>
+                            <span className="text-xs text-green-700">{formatDate(r.completedAt)}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="text-left text-xs text-muted space-y-0.5">
-                      <p>بدأ: {formatDate(r.reservedAt)}</p>
-                      <p>أتمّ: {formatDate(r.completedAt)}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
 
           {/* Completed khatmas */}
           {profile.completedKhatmas?.length > 0 && (

@@ -235,19 +235,60 @@ export class KhatmaService {
   }
 
   async deleteKhatma(userId: string, khatmaId: string) {
-    const khatma = await this.db.khatma.findFirst({ where: { id: khatmaId, deletedAt: null } });
+    const khatma = await this.db.khatma.findFirst({ where: { id: khatmaId } });
     if (!khatma) throw new NotFoundException('الختمة غير موجودة');
     if (khatma.creatorId !== userId) throw new ForbiddenException('فقط المنشئ يمكنه حذف الختمة');
-    await this.db.khatma.update({ where: { id: khatmaId }, data: { deletedAt: new Date() } });
-    return { success: true, message: 'تم حذف الختمة' };
+
+    const startedCount = await this.db.reservedPart.count({
+      where: { khatmaId, status: { in: ['RESERVED', 'COMPLETED'] } },
+    });
+    if (startedCount > 0) {
+      throw new BadRequestException('لا يمكن حذف الختمة بعد بدء القراءة');
+    }
+
+    await this.db.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({ where: { khatmaId } });
+      await tx.notification.deleteMany({ where: { khatmaId } });
+      await tx.invitation.deleteMany({ where: { khatmaId } });
+      await tx.reservedPart.deleteMany({ where: { khatmaId } });
+      await tx.khatma.delete({ where: { id: khatmaId } });
+    });
+
+    return { success: true, message: 'تم حذف الختمة نهائياً' };
   }
 
-  async editKhatma(userId: string, khatmaId: string, data: { title?: string; description?: string }) {
+  async editKhatma(userId: string, khatmaId: string, data: {
+    title?: string;
+    description?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  }) {
     const khatma = await this.db.khatma.findFirst({ where: { id: khatmaId, deletedAt: null } });
     if (!khatma) throw new NotFoundException('الختمة غير موجودة');
     if (khatma.creatorId !== userId) throw new ForbiddenException('فقط المنشئ يمكنه تعديل الختمة');
-    const updated = await this.db.khatma.update({ where: { id: khatmaId }, data });
-    return { id: updated.id, title: updated.title, description: updated.description };
+
+    if (data.startDate !== undefined && data.endDate !== undefined &&
+        data.startDate && data.endDate &&
+        new Date(data.endDate) <= new Date(data.startDate)) {
+      throw new BadRequestException('تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية');
+    }
+
+    const updated = await this.db.khatma.update({
+      where: { id: khatmaId },
+      data: {
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...('startDate' in data && { startDate: data.startDate ? new Date(data.startDate) : null }),
+        ...('endDate' in data && { endDate: data.endDate ? new Date(data.endDate) : null }),
+      },
+    });
+    return {
+      id: updated.id,
+      title: updated.title,
+      description: updated.description,
+      startDate: updated.startDate,
+      endDate: updated.endDate,
+    };
   }
 
   async updateSettings(khatmaId: string, userId: string, settings: {

@@ -53,7 +53,7 @@ export class KhatmaController {
   editKhatma(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body() body: { title?: string; description?: string },
+    @Body() body: { title?: string; description?: string; startDate?: string | null; endDate?: string | null },
   ) {
     return this.khatmaService.editKhatma(user.id, id, body);
   }
