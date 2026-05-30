@@ -2,11 +2,12 @@ import {
   Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
+import { MailService } from '@/modules/mail/mail.service';
 import { CreateKhatmaDto } from './dto/create-khatma.dto';
 
 @Injectable()
 export class KhatmaService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private mail: MailService) {}
 
   async create(userId: string, dto: CreateKhatmaDto) {
     const khatma = await this.db.$transaction(async (tx) => {
@@ -359,6 +360,74 @@ export class KhatmaService {
       toEmail,
       senderName: sender?.displayName ?? '',
       khatmaTitle: khatma.title,
+    };
+  }
+
+  async notifyParticipants(khatmaId: string, ownerId: string) {
+    const khatma: any = await this.db.khatma.findFirst({
+      where: { id: khatmaId, deletedAt: null },
+      include: {
+        parts: { select: { status: true } },
+        participants: {
+          where: { status: 'ACTIVE' },
+          include: { user: { select: { id: true, displayName: true, email: true } } },
+        },
+      },
+    });
+    if (!khatma) throw new NotFoundException('الختمة غير موجودة');
+
+    const ownerParticipant = khatma.participants.find((p: any) => p.userId === ownerId && p.role === 'OWNER');
+    if (!ownerParticipant) throw new ForbiddenException('فقط صاحب الختمة يمكنه إرسال الإشعارات');
+
+    const totalParts = khatma.parts.length;
+    const remainingParts = khatma.parts.filter((p: any) => p.status === 'AVAILABLE').length;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const khatmaUrl = `${frontendUrl}/khatma/${khatmaId}`;
+
+    // Create a fresh invite link
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    const invitation = await this.db.invitation.create({
+      data: { senderId: ownerId, khatmaId, expiresAt },
+    });
+    const inviteUrl = `${frontendUrl}/join/${invitation.token}`;
+
+    const others = khatma.participants.filter((p: any) => p.userId !== ownerId);
+    let notified = 0;
+
+    for (const p of others) {
+      const { user } = p as any;
+      if (!user?.email) continue;
+
+      await this.db.notification.create({
+        data: {
+          userId: user.id,
+          khatmaId,
+          type: 'DEADLINE_REMINDER',
+          title: `تذكير: ختمة "${khatma.title}"`,
+          body: `${remainingParts} جزء متبقٍ — ${khatma.endDate ? `تنتهي ${new Date(khatma.endDate).toLocaleDateString('ar-SA')}` : 'شارك الرابط مع أصحابك'}`,
+        },
+      });
+
+      this.mail.sendParticipantReminder({
+        toEmail: user.email,
+        displayName: user.displayName,
+        khatmaTitle: khatma.title,
+        endDate: khatma.endDate ? new Date(khatma.endDate) : null,
+        remainingParts,
+        totalParts,
+        khatmaUrl,
+        inviteUrl,
+      }).catch(() => {});
+
+      notified++;
+    }
+
+    return {
+      success: true,
+      notified,
+      inviteUrl,
+      message: `تم إرسال التذكير لـ ${notified} مشارك`,
     };
   }
 

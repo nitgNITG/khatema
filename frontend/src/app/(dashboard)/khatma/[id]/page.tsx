@@ -137,6 +137,12 @@ export default function KhatmaDetailPage() {
     onError: (e: any) => toast.error(e.response?.data?.message || 'حدث خطأ'),
   });
 
+  const notifyMutation = useMutation({
+    mutationFn: () => api.post(`/khatmas/${id}/notify`).then((r) => r.data),
+    onSuccess: (res: any) => toast.success(res.message || 'تم إرسال التذكير'),
+    onError: (e: any) => toast.error(e.response?.data?.message || 'حدث خطأ'),
+  });
+
   const isAdmin = data?.creator?.id === user?.id;
 
   const handlePartClick = (part: QuranPart) => {
@@ -297,6 +303,35 @@ export default function KhatmaDetailPage() {
                 </button>
                 <button onClick={() => setEditMode(false)} className="flex-1 border border-border rounded-lg py-2 text-sm font-semibold hover:bg-gray-50">
                   إلغاء
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Notify participants */}
+          <button
+            onClick={() => notifyMutation.mutate()}
+            disabled={notifyMutation.isPending}
+            className="w-full p-3 rounded-xl border border-primary/30 text-primary text-sm font-medium hover:bg-primary/5 disabled:opacity-50 transition-colors"
+          >
+            {notifyMutation.isPending ? 'جارٍ الإرسال...' : '🔔 إرسال تذكير للمشاركين'}
+          </button>
+
+          {notifyMutation.isSuccess && (notifyMutation.data as any)?.inviteUrl && (
+            <div className="bg-gray-50 border border-border rounded-xl p-3 space-y-1">
+              <p className="text-xs text-muted font-medium">رابط الدعوة (للمشاركة مع الآخرين)</p>
+              <div className="flex gap-2 items-center">
+                <input
+                  readOnly
+                  value={(notifyMutation.data as any).inviteUrl}
+                  className="flex-1 border border-border rounded-lg px-2 py-1.5 text-xs bg-white"
+                  dir="ltr"
+                />
+                <button
+                  onClick={() => { navigator.clipboard.writeText((notifyMutation.data as any).inviteUrl); toast.success('تم النسخ'); }}
+                  className="text-xs border border-border rounded-lg px-2 py-1.5 hover:bg-gray-100"
+                >
+                  نسخ
                 </button>
               </div>
             </div>
