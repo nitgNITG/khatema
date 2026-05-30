@@ -77,6 +77,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return { allowed: count <= limit, count };
   }
 
+  async incr(key: string, ttlSeconds?: number): Promise<number> {
+    const count = await this.client.incr(key);
+    if (count === 1 && ttlSeconds) {
+      await this.client.expire(key, ttlSeconds);
+    }
+    return count;
+  }
+
   async publish(channel: string, message: string): Promise<void> {
     await this.client.publish(channel, message);
   }

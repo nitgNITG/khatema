@@ -50,6 +50,21 @@ export class AuthController {
     return { success: true, message: 'تم تسجيل الخروج' };
   }
 
+  @Post('send-email-otp')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async sendEmailOtp(@CurrentUser() user: any, @Req() req: Request) {
+    await this.auth.sendEmailOtp(user.email, req.ip);
+    return { success: true, message: 'تم إرسال رمز التحقق' };
+  }
+
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  async verifyEmail(@CurrentUser() user: any, @Body() body: { otp: string }) {
+    return this.auth.verifyEmailOtp(user.id, body.otp);
+  }
+
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendOtp(@Body() body: { phone: string }) {

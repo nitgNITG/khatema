@@ -8,7 +8,7 @@ export class UsersService {
   async getProfile(userId: string) {
     const user = await this.db.user.findUnique({
       where: { id: userId, deletedAt: null },
-      select: { id: true, displayName: true, email: true, phone: true, avatarUrl: true, role: true, createdAt: true, maxCollectiveKhatmas: true, maxIndividualKhatmas: true },
+      select: { id: true, displayName: true, email: true, phone: true, avatarUrl: true, role: true, createdAt: true, maxCollectiveKhatmas: true, maxIndividualKhatmas: true, emailVerified: true, notifyBeforeHours: true } as any,
     });
     if (!user) throw new NotFoundException('المستخدم غير موجود');
 
@@ -75,6 +75,15 @@ export class UsersService {
       },
       select: { maxCollectiveKhatmas: true, maxIndividualKhatmas: true },
     });
+  }
+
+  async updateNotificationPrefs(userId: string, notifyBeforeHours: number[]) {
+    const valid = notifyBeforeHours.filter((h) => h > 0).sort((a, b) => b - a);
+    await (this.db.user.update as any)({
+      where: { id: userId },
+      data: { notifyBeforeHours: valid },
+    });
+    return { success: true, notifyBeforeHours: valid };
   }
 
   async updateProfile(userId: string, data: { displayName?: string; avatarUrl?: string }) {

@@ -53,7 +53,7 @@ export class KhatmaController {
   editKhatma(
     @Param('id') id: string,
     @CurrentUser() user: any,
-    @Body() body: { title?: string; description?: string },
+    @Body() body: { title?: string; description?: string; startDate?: string | null; endDate?: string | null },
   ) {
     return this.khatmaService.editKhatma(user.id, id, body);
   }
@@ -135,6 +135,13 @@ export class KhatmaController {
   @HttpCode(HttpStatus.OK)
   complete(@Param('id') khatmaId: string, @Param('partId') partId: string, @CurrentUser() user: any) {
     return this.reservationService.complete(user.id, khatmaId, partId);
+  }
+
+  @Delete(':id/parts/:partId/my-reservation')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  cancelReservation(@Param('id') khatmaId: string, @Param('partId') partId: string, @CurrentUser() user: any) {
+    return this.reservationService.cancelReservation(user.id, khatmaId, partId);
   }
 
   @Delete(':id/parts/:partId/reservation')

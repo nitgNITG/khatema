@@ -17,6 +17,7 @@ export default function KhatmaDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedPart, setSelectedPart] = useState<QuranPart | null>(null);
+  const [myReservedPart, setMyReservedPart] = useState<QuranPart | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
@@ -24,6 +25,8 @@ export default function KhatmaDetailPage() {
   const [editMode, setEditMode] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
 
   // Real-time updates
   useRealtime(id);
@@ -59,6 +62,20 @@ export default function KhatmaDetailPage() {
     },
   });
 
+  const cancelReservationMutation = useMutation({
+    mutationFn: (partId: string) =>
+      api.delete(`/khatmas/${id}/parts/${partId}/my-reservation`).then((r) => r.data),
+    onSuccess: (res) => {
+      toast.success(res.message || 'تم إلغاء الحجز');
+      setMyReservedPart(null);
+      queryClient.invalidateQueries({ queryKey: ['khatma', id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'حدث خطأ');
+      setMyReservedPart(null);
+    },
+  });
+
   const adminUnreserveMutation = useMutation({
     mutationFn: (partId: string) =>
       api.delete(`/khatmas/${id}/parts/${partId}/reservation`).then((r) => r.data),
@@ -90,7 +107,7 @@ export default function KhatmaDetailPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: (data: { title: string; description: string }) =>
+    mutationFn: (data: { title: string; description: string; startDate: string | null; endDate: string | null }) =>
       api.patch(`/khatmas/${id}`, data).then((r) => r.data),
     onSuccess: () => {
       toast.success('تم التعديل');
@@ -124,10 +141,10 @@ export default function KhatmaDetailPage() {
 
   const handlePartClick = (part: QuranPart) => {
     if (part.reservedBy?.id === user?.id && part.status === 'RESERVED') {
-      if (confirm(`هل أتممت قراءة الجزء ${part.partNumber}؟`)) {
-        completeMutation.mutate(part.id);
-      }
+      setMyReservedPart(part);
     } else if (part.status === 'AVAILABLE') {
+      const now = new Date();
+      if (data?.startDate && new Date(data.startDate) > now) return;
       setSelectedPart(part);
     }
   };
@@ -154,6 +171,7 @@ export default function KhatmaDetailPage() {
             {data.description && <p className="text-muted mt-1">{data.description}</p>}
             <p className="text-sm text-muted mt-2">
               {data.participantCount} مشارك
+              {data.startDate && new Date(data.startDate) > new Date() && ` • يبدأ الحجز ${new Date(data.startDate).toLocaleDateString('ar-SA')}`}
               {data.endDate && ` • تنتهي ${new Date(data.endDate).toLocaleDateString('ar-SA')}`}
               {data.isContinuous && ` • الدورة ${data.iteration}`}
             </p>
@@ -218,10 +236,16 @@ export default function KhatmaDetailPage() {
           {/* Edit title/description */}
           {!editMode ? (
             <button
-              onClick={() => { setEditTitle(data.title); setEditDescription(data.description ?? ''); setEditMode(true); }}
+              onClick={() => {
+                setEditTitle(data.title);
+                setEditDescription(data.description ?? '');
+                setEditStartDate(data.startDate ? new Date(data.startDate).toISOString().slice(0, 16) : '');
+                setEditEndDate(data.endDate ? new Date(data.endDate).toISOString().slice(0, 16) : '');
+                setEditMode(true);
+              }}
               className="w-full text-right p-3 rounded-xl border border-border hover:bg-gray-50 text-sm font-medium transition-colors"
             >
-              ✏️ تعديل الاسم والوصف
+              ✏️ تعديل الاسم والتواريخ
             </button>
           ) : (
             <div className="space-y-3 p-3 border border-primary/30 rounded-xl bg-primary/5">
@@ -238,9 +262,34 @@ export default function KhatmaDetailPage() {
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 placeholder="الوصف (اختياري)"
               />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ البداية</label>
+                  <input
+                    type="datetime-local"
+                    value={editStartDate}
+                    onChange={(e) => setEditStartDate(e.target.value)}
+                    className="w-full border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ الانتهاء</label>
+                  <input
+                    type="datetime-local"
+                    value={editEndDate}
+                    onChange={(e) => setEditEndDate(e.target.value)}
+                    className="w-full border border-border rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => editMutation.mutate({ title: editTitle, description: editDescription })}
+                  onClick={() => editMutation.mutate({
+                    title: editTitle,
+                    description: editDescription,
+                    startDate: editStartDate || null,
+                    endDate: editEndDate || null,
+                  })}
                   disabled={!editTitle.trim() || editMutation.isPending}
                   className="flex-1 bg-primary text-white rounded-lg py-2 text-sm font-semibold disabled:opacity-50"
                 >
@@ -256,14 +305,14 @@ export default function KhatmaDetailPage() {
           {/* Delete khatma */}
           <button
             onClick={() => {
-              if (confirm(`هل أنت متأكد من حذف "${data.title}"؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+              if (confirm(`سيتم حذف "${data.title}" نهائياً. هذا الإجراء لا يمكن التراجع عنه.`)) {
                 deleteMutation.mutate();
               }
             }}
             disabled={deleteMutation.isPending}
             className="w-full p-3 rounded-xl border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/5 disabled:opacity-50 transition-colors"
           >
-            {deleteMutation.isPending ? 'جارٍ الحذف...' : '🗑️ حذف الختمة'}
+            {deleteMutation.isPending ? 'جارٍ الحذف...' : '🗑️ حذف الختمة نهائياً'}
           </button>
         </div>
       )}
@@ -322,6 +371,45 @@ export default function KhatmaDetailPage() {
                   {inviteMutation.isPending ? '...' : 'إرسال'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start date banner */}
+      {data.startDate && new Date(data.startDate) > new Date() && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
+          يبدأ الحجز في {new Date(data.startDate).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
+      )}
+
+      {/* My reserved part modal */}
+      {myReservedPart && (
+        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-lg font-bold">الجزء {myReservedPart.partNumber}</h3>
+            <p className="text-muted text-sm">ماذا تريد أن تفعل بالجزء {myReservedPart.partNumber}؟</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => { completeMutation.mutate(myReservedPart.id); setMyReservedPart(null); }}
+                disabled={completeMutation.isPending}
+                className="w-full bg-primary text-white rounded-xl py-3 font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {completeMutation.isPending ? 'جارٍ التسجيل...' : 'أتممت القراءة'}
+              </button>
+              <button
+                onClick={() => cancelReservationMutation.mutate(myReservedPart.id)}
+                disabled={cancelReservationMutation.isPending}
+                className="w-full border border-destructive/40 text-destructive rounded-xl py-3 font-semibold hover:bg-destructive/5 disabled:opacity-50 transition-colors"
+              >
+                {cancelReservationMutation.isPending ? 'جارٍ الإلغاء...' : 'إلغاء الحجز'}
+              </button>
+              <button
+                onClick={() => setMyReservedPart(null)}
+                className="w-full border border-border rounded-xl py-3 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                تراجع
+              </button>
             </div>
           </div>
         </div>

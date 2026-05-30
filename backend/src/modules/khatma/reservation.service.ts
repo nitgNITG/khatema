@@ -39,6 +39,11 @@ export class ReservationService {
           throw new BadRequestException('الختمة غير نشطة');
         }
 
+        // Check start date
+        if (khatma.startDate && new Date() < new Date(khatma.startDate)) {
+          throw new BadRequestException('لم يبدأ وقت الحجز بعد');
+        }
+
         // Re-check part availability inside transaction
         const part = await tx.quranPart.findUnique({ where: { id: partId } });
         if (!part || part.khatmaId !== khatmaId) throw new NotFoundException('الجزء غير موجود');
@@ -160,6 +165,24 @@ export class ReservationService {
       },
       message: `أحسنت! تم تسجيل إتمام الجزء ${reservation.part.partNumber}`,
     };
+  }
+
+  async cancelReservation(userId: string, khatmaId: string, partId: string) {
+    const reservation = await this.db.reservedPart.findFirst({
+      where: { partId, khatmaId, userId, status: 'RESERVED' },
+      include: { part: true },
+    });
+
+    if (!reservation) throw new NotFoundException('لا يوجد حجز نشط لهذا الجزء');
+
+    await this.db.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.reservedPart.delete({ where: { id: reservation.id } });
+      await tx.quranPart.update({ where: { id: partId }, data: { status: 'AVAILABLE' } });
+    });
+
+    this.events.emit('part.unreserved', { khatmaId, partId, partNumber: reservation.part.partNumber });
+
+    return { success: true, message: `تم إلغاء حجز الجزء ${reservation.part.partNumber}` };
   }
 
   async adminUnreserve(adminId: string, khatmaId: string, partId: string) {
