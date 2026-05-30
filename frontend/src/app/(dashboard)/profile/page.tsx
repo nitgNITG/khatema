@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [collective, setCollective] = useState<number | null>(null);
   const [individual, setIndividual] = useState<number | null>(null);
+  const [notifyHours, setNotifyHours] = useState<number[]>([24]);
 
   const { data: profile, isLoading } = useQuery<any>({
     queryKey: ['profile'],
@@ -38,8 +39,26 @@ export default function ProfilePage() {
     if (profile) {
       setCollective(profile.maxCollectiveKhatmas ?? 1);
       setIndividual(profile.maxIndividualKhatmas ?? 1);
+      if (Array.isArray(profile.notifyBeforeHours)) {
+        setNotifyHours(profile.notifyBeforeHours);
+      }
     }
   }, [profile]);
+
+  const notificationsMutation = useMutation({
+    mutationFn: () => api.patch('/users/me/notifications', { notifyBeforeHours: notifyHours }).then((r) => r.data),
+    onSuccess: () => {
+      toast.success('تم حفظ إعدادات التذكير');
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    },
+    onError: (err: any) => toast.error(err.response?.data?.message || 'حدث خطأ'),
+  });
+
+  const toggleNotifyHour = (h: number) => {
+    setNotifyHours((prev) =>
+      prev.includes(h) ? prev.filter((x) => x !== h) : [...prev, h].sort((a, b) => b - a),
+    );
+  };
 
   const limitsMutation = useMutation({
     mutationFn: () => api.patch('/users/me/limits', {
@@ -196,6 +215,37 @@ export default function ProfilePage() {
               className="w-full bg-primary text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-primary/90 transition-colors"
             >
               {limitsMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+            </button>
+          </section>
+
+          {/* Notification preferences */}
+          <section className="bg-white border border-border rounded-2xl p-5 space-y-4">
+            <div>
+              <h2 className="font-semibold">تذكير قبل انتهاء الختمة</h2>
+              <p className="text-xs text-muted mt-0.5">اختر متى تريد الحصول على تذكير قبل انتهاء الختمة</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[1, 6, 12, 24, 48].map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => toggleNotifyHour(h)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                    notifyHours.includes(h)
+                      ? 'bg-primary text-white border-primary'
+                      : 'border-border hover:border-primary/40'
+                  }`}
+                >
+                  {h === 1 ? 'ساعة واحدة' : h === 6 ? '6 ساعات' : h === 12 ? '12 ساعة' : h === 24 ? '24 ساعة' : '48 ساعة'}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => notificationsMutation.mutate()}
+              disabled={notificationsMutation.isPending}
+              className="w-full bg-primary text-white rounded-xl py-2.5 text-sm font-semibold disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            >
+              {notificationsMutation.isPending ? 'جارٍ الحفظ...' : 'حفظ'}
             </button>
           </section>
 

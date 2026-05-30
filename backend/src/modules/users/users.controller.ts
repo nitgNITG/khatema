@@ -26,6 +26,14 @@ export class UsersController {
     return this.users.updateLimits(user.id, body);
   }
 
+  @Patch('me/notifications')
+  updateNotifications(
+    @CurrentUser() user: any,
+    @Body() body: { notifyBeforeHours: number[] },
+  ) {
+    return this.users.updateNotificationPrefs(user.id, body.notifyBeforeHours);
+  }
+
   @Get('me/khatmas')
   getMyKhatmas(@CurrentUser() user: any) {
     return this.users.getMyKhatmas(user.id);

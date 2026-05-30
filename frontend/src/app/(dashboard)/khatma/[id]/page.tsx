@@ -17,6 +17,7 @@ export default function KhatmaDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedPart, setSelectedPart] = useState<QuranPart | null>(null);
+  const [myReservedPart, setMyReservedPart] = useState<QuranPart | null>(null);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteName, setInviteName] = useState('');
@@ -56,6 +57,20 @@ export default function KhatmaDetailPage() {
     },
     onError: (err: any) => {
       toast.error(err.response?.data?.message || 'حدث خطأ');
+    },
+  });
+
+  const cancelReservationMutation = useMutation({
+    mutationFn: (partId: string) =>
+      api.delete(`/khatmas/${id}/parts/${partId}/my-reservation`).then((r) => r.data),
+    onSuccess: (res) => {
+      toast.success(res.message || 'تم إلغاء الحجز');
+      setMyReservedPart(null);
+      queryClient.invalidateQueries({ queryKey: ['khatma', id] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'حدث خطأ');
+      setMyReservedPart(null);
     },
   });
 
@@ -124,10 +139,10 @@ export default function KhatmaDetailPage() {
 
   const handlePartClick = (part: QuranPart) => {
     if (part.reservedBy?.id === user?.id && part.status === 'RESERVED') {
-      if (confirm(`هل أتممت قراءة الجزء ${part.partNumber}؟`)) {
-        completeMutation.mutate(part.id);
-      }
+      setMyReservedPart(part);
     } else if (part.status === 'AVAILABLE') {
+      const now = new Date();
+      if (data?.startDate && new Date(data.startDate) > now) return;
       setSelectedPart(part);
     }
   };
@@ -154,6 +169,7 @@ export default function KhatmaDetailPage() {
             {data.description && <p className="text-muted mt-1">{data.description}</p>}
             <p className="text-sm text-muted mt-2">
               {data.participantCount} مشارك
+              {data.startDate && new Date(data.startDate) > new Date() && ` • يبدأ الحجز ${new Date(data.startDate).toLocaleDateString('ar-SA')}`}
               {data.endDate && ` • تنتهي ${new Date(data.endDate).toLocaleDateString('ar-SA')}`}
               {data.isContinuous && ` • الدورة ${data.iteration}`}
             </p>
@@ -322,6 +338,45 @@ export default function KhatmaDetailPage() {
                   {inviteMutation.isPending ? '...' : 'إرسال'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start date banner */}
+      {data.startDate && new Date(data.startDate) > new Date() && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-center">
+          يبدأ الحجز في {new Date(data.startDate).toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+        </div>
+      )}
+
+      {/* My reserved part modal */}
+      {myReservedPart && (
+        <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <h3 className="text-lg font-bold">الجزء {myReservedPart.partNumber}</h3>
+            <p className="text-muted text-sm">ماذا تريد أن تفعل بالجزء {myReservedPart.partNumber}؟</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => { completeMutation.mutate(myReservedPart.id); setMyReservedPart(null); }}
+                disabled={completeMutation.isPending}
+                className="w-full bg-primary text-white rounded-xl py-3 font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {completeMutation.isPending ? 'جارٍ التسجيل...' : 'أتممت القراءة'}
+              </button>
+              <button
+                onClick={() => cancelReservationMutation.mutate(myReservedPart.id)}
+                disabled={cancelReservationMutation.isPending}
+                className="w-full border border-destructive/40 text-destructive rounded-xl py-3 font-semibold hover:bg-destructive/5 disabled:opacity-50 transition-colors"
+              >
+                {cancelReservationMutation.isPending ? 'جارٍ الإلغاء...' : 'إلغاء الحجز'}
+              </button>
+              <button
+                onClick={() => setMyReservedPart(null)}
+                className="w-full border border-border rounded-xl py-3 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                تراجع
+              </button>
             </div>
           </div>
         </div>

@@ -18,6 +18,11 @@ const schema = z.object({
   allowRepeat: z.boolean(),
   isContinuous: z.boolean(),
   maxMembers: z.number().min(1).max(1000).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+}).refine((d) => !d.startDate || !d.endDate || new Date(d.endDate) > new Date(d.startDate), {
+  message: 'تاريخ الانتهاء يجب أن يكون بعد تاريخ البداية',
+  path: ['endDate'],
 });
 
 type FormData = z.infer<typeof schema>;
@@ -160,6 +165,32 @@ export default function NewKhatmaPage() {
               <p className="text-sm text-muted">تبدأ دورة جديدة تلقائياً عند الاكتمال</p>
             </div>
           </label>
+
+          {/* Start/End dates — collective only */}
+          {!isIndividual && (
+            <div className="space-y-4 pt-2 border-t border-border">
+              <p className="text-sm font-medium">مدة الختمة (اختياري)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ البداية</label>
+                  <input
+                    type="datetime-local"
+                    {...register('startDate')}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">تاريخ الانتهاء</label>
+                  <input
+                    type="datetime-local"
+                    {...register('endDate')}
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  {errors.endDate && <p className="text-destructive text-xs mt-1">{errors.endDate.message}</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary + submit */}

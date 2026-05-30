@@ -6,9 +6,41 @@ All notable changes to Khatema are documented here.
 
 ## [Unreleased] — In Progress
 
-- Fix: WebSocket socket URL strips `/api/v1` so Socket.IO connects to correct root
-- Fix: Rate limiting on auth endpoints (5 req/min) via `@nestjs/throttler`
 - Pending: JWT secret rotation on VPS
+
+---
+
+## [1.4.0] — 2026-05-30 — Cancel Reservation, Khatma Dates, Email OTP
+
+### Added
+
+**Cancel Own Reservation**
+- Users can cancel their own reserved part (releases it back to AVAILABLE, deletes the record)
+- Clicking a reserved part now opens a modal with two options: "أتممت القراءة" or "إلغاء الحجز"
+- `DELETE /khatmas/:id/parts/:partId/my-reservation` endpoint
+
+**Khatma Start/End Dates**
+- `startDate` and `endDate` already in schema — now enforced in reservation flow
+- Reserving before `startDate` returns `400 لم يبدأ وقت الحجز بعد`
+- Khatma detail page shows "يبدأ الحجز في X" banner with amber styling when start date is in the future
+- Create khatma form has date/time pickers for start and end (collective khatmas only)
+
+**Email OTP Verification**
+- On registration, a 6-digit OTP is emailed automatically; user is redirected to `/verify-email`
+- Rate limits: 5 OTP requests per email per hour, 10 per IP per hour
+- `POST /auth/send-email-otp` — resend OTP (requires auth)
+- `POST /auth/verify-email` — verify OTP, marks `emailVerified = true`
+- New page: `/verify-email` — OTP input with 60-second resend cooldown
+
+**Deadline Notifications**
+- `@nestjs/schedule` cron job runs every hour, checks khatmas with upcoming `endDate`
+- For each participant, sends both in-app notification and email reminder
+- Users can set multiple reminder times (1h, 6h, 12h, 24h, 48h before deadline)
+- `PATCH /users/me/notifications` — save `notifyBeforeHours` array preference
+- Profile page has new "تذكير قبل انتهاء الختمة" section with toggle chips
+
+### Schema changes
+- Added `notifyBeforeHours Json @default("[24]")` to User model
 
 ---
 

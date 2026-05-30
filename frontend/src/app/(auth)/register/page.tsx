@@ -39,8 +39,8 @@ function RegisterForm() {
     try {
       const res = await api.post('/auth/register', data);
       setAuth(res.data.data.user, res.data.data.accessToken);
-      toast.success('تم إنشاء حسابك بنجاح!');
-      router.push(redirect);
+      toast.success('تم إنشاء حسابك! تحقق من بريدك الإلكتروني');
+      router.push('/verify-email');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'حدث خطأ، حاول مرة أخرى');
     } finally {

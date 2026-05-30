@@ -137,6 +137,13 @@ export class KhatmaController {
     return this.reservationService.complete(user.id, khatmaId, partId);
   }
 
+  @Delete(':id/parts/:partId/my-reservation')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  cancelReservation(@Param('id') khatmaId: string, @Param('partId') partId: string, @CurrentUser() user: any) {
+    return this.reservationService.cancelReservation(user.id, khatmaId, partId);
+  }
+
   @Delete(':id/parts/:partId/reservation')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

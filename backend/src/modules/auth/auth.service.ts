@@ -3,12 +3,16 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { DatabaseService } from '@/database/database.service';
 import { RedisService } from '@/redis/redis.service';
+import { MailService } from '@/modules/mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,6 +24,7 @@ export class AuthService {
     private jwt: JwtService,
     private redis: RedisService,
     private config: ConfigService,
+    private mail: MailService,
   ) {}
 
   async register(dto: RegisterDto, ipAddress?: string) {
@@ -40,7 +45,57 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.email!, user.role);
     await this.saveRefreshToken(user.id, tokens.refreshToken, ipAddress);
 
+    // Send email OTP for new registrations
+    await this.sendEmailOtp(dto.email!, ipAddress);
+
     return { user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+  }
+
+  async sendEmailOtp(email: string, ip?: string) {
+    const ipKey = `otp:count:ip:${ip || 'unknown'}`;
+    const emailKey = `otp:count:email:${email}`;
+
+    const [ipCount, emailCount] = await Promise.all([
+      this.redis.get(ipKey),
+      this.redis.get(emailKey),
+    ]);
+
+    if (parseInt(ipCount || '0') >= 10) {
+      throw new HttpException('تم تجاوز الحد المسموح. حاول لاحقاً', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    if (parseInt(emailCount || '0') >= 5) {
+      throw new HttpException('انتظر ساعة قبل المحاولة مجدداً', HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    await Promise.all([
+      this.redis.set(`otp:email:${email}`, hash, 300),
+      this.redis.incr(ipKey, 3600),
+      this.redis.incr(emailKey, 3600),
+    ]);
+
+    await this.mail.sendEmailOtp(email, otp);
+  }
+
+  async verifyEmailOtp(userId: string, otp: string) {
+    const user = await this.db.user.findUnique({ where: { id: userId }, select: { email: true, emailVerified: true } });
+    if (!user?.email) throw new BadRequestException('لا يوجد بريد إلكتروني مرتبط');
+
+    const stored = await this.redis.get(`otp:email:${user.email}`);
+    if (!stored) throw new BadRequestException('الرمز منتهٍ أو غير موجود');
+
+    const hash = crypto.createHash('sha256').update(otp).digest('hex');
+    const valid = crypto.timingSafeEqual(Buffer.from(stored), Buffer.from(hash));
+    if (!valid) throw new UnauthorizedException('الرمز غير صحيح');
+
+    await Promise.all([
+      this.db.user.update({ where: { id: userId }, data: { emailVerified: true } }),
+      this.redis.del(`otp:email:${user.email}`),
+    ]);
+
+    return { success: true, message: 'تم التحقق من البريد الإلكتروني بنجاح' };
   }
 
   async login(dto: LoginDto, ipAddress?: string) {
