@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
+import NotificationBell from '@/components/NotificationBell';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, clearAuth } = useAuthStore();
@@ -22,7 +23,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-40 bg-white border-b border-border">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/dashboard" className="text-xl font-bold text-primary">ختمة</Link>
-          <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={user.displayName} className="w-8 h-8 rounded-full object-cover" />
             ) : (
@@ -32,6 +35,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             )}
             <span className="text-sm font-medium hidden sm:block">{user?.displayName}</span>
           </Link>
+          </div>
         </div>
       </header>
       <main>{children}</main>

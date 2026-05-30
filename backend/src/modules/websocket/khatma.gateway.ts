@@ -38,6 +38,7 @@ export class KhatmaGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       client.data.userId = payload.sub;
+      client.join(`user:${payload.sub}`);
       this.logger.log(`Client connected: ${client.id} (user: ${payload.sub})`);
     } catch {
       client.disconnect();
@@ -90,5 +91,10 @@ export class KhatmaGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @OnEvent('khatma.restarted')
   handleKhatmaRestarted(payload: { khatmaId: string; iteration: number }) {
     this.server.to(`khatma:${payload.khatmaId}`).emit('khatma_restarted', payload);
+  }
+
+  @OnEvent('notification.created')
+  handleNotificationCreated(payload: { userId: string; notification: any }) {
+    this.server.to(`user:${payload.userId}`).emit('new_notification', payload.notification);
   }
 }

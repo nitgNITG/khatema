@@ -4,9 +4,10 @@ import { KhatmaController } from './khatma.controller';
 import { KhatmaService } from './khatma.service';
 import { ReservationService } from './reservation.service';
 import { MailModule } from '@/modules/mail/mail.module';
+import { NotificationsModule } from '@/modules/notifications/notifications.module';
 
 @Module({
-  imports: [EventEmitterModule.forRoot(), MailModule],
+  imports: [EventEmitterModule.forRoot(), MailModule, NotificationsModule],
   controllers: [KhatmaController],
   providers: [KhatmaService, ReservationService],
   exports: [KhatmaService, ReservationService],
