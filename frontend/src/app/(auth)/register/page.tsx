@@ -111,7 +111,7 @@ function RegisterForm() {
         </div>
 
         <a
-          href="http://localhost:3001/api/v1/auth/google"
+          href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
           className="flex items-center justify-center gap-3 w-full border border-border rounded-lg py-3 font-semibold hover:bg-gray-50 transition-colors"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
