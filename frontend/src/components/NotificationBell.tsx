@@ -61,6 +61,14 @@ export default function NotificationBell() {
     },
   });
 
+  const deleteReadMutation = useMutation({
+    mutationFn: () => api.delete('/notifications/read').then((r) => r.data),
+    onSuccess: () => {
+      setNotifications(notifications.filter((n: any) => !n.isRead));
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
   const handleOpen = () => {
     setOpen((v) => !v);
   };
@@ -87,15 +95,26 @@ export default function NotificationBell() {
         <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-border rounded-2xl shadow-lg z-50 overflow-hidden" dir="rtl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-sm">الإشعارات</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markReadMutation.mutate()}
-                disabled={markReadMutation.isPending}
-                className="text-xs text-primary hover:underline disabled:opacity-50"
-              >
-                تعليم الكل كمقروء
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => markReadMutation.mutate()}
+                  disabled={markReadMutation.isPending}
+                  className="text-xs text-primary hover:underline disabled:opacity-50"
+                >
+                  تعليم الكل كمقروء
+                </button>
+              )}
+              {notifications.some((n: any) => n.isRead) && (
+                <button
+                  onClick={() => deleteReadMutation.mutate()}
+                  disabled={deleteReadMutation.isPending}
+                  className="text-xs text-destructive hover:underline disabled:opacity-50"
+                >
+                  حذف المقروءة
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
