@@ -224,6 +224,29 @@ export class AuthService {
     };
   }
 
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.db.user.findUnique({ where: { email }, select: { id: true } });
+    if (!user) return; // no email enumeration
+
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.redis.set(`pwd-reset:${token}`, user.id, 3600);
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    await this.mail.sendPasswordReset(email, `${frontendUrl}/reset-password?token=${token}`);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const userId = await this.redis.get(`pwd-reset:${token}`);
+    if (!userId) throw new BadRequestException('الرابط منتهي الصلاحية أو غير صالح');
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await this.db.user.update({ where: { id: userId }, data: { passwordHash } });
+    await this.redis.del(`pwd-reset:${token}`);
+    // Force re-login by revoking all sessions
+    await this.db.session.updateMany({ where: { userId }, data: { revokedAt: new Date() } });
+  }
+
   private async saveRefreshToken(userId: string, refreshToken: string, ipAddress?: string) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);

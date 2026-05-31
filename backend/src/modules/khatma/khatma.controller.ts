@@ -151,6 +151,12 @@ export class KhatmaController {
     return this.reservationService.adminUnreserve(user.id, khatmaId, partId);
   }
 
+  @Get(':id/participants')
+  @UseGuards(JwtAuthGuard)
+  getParticipants(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.khatmaService.getParticipants(id, user.id);
+  }
+
   @Post(':id/notify')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)

@@ -65,6 +65,20 @@ export class AuthController {
     return this.auth.verifyEmailOtp(user.id, body.otp);
   }
 
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: { email: string }) {
+    await this.auth.forgotPassword(body.email);
+    return { success: true, message: 'إذا كان البريد مسجلاً، سيصلك رابط إعادة التعيين' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: { token: string; password: string }) {
+    await this.auth.resetPassword(body.token, body.password);
+    return { success: true, message: 'تم تغيير كلمة المرور بنجاح' };
+  }
+
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendOtp(@Body() body: { phone: string }) {
