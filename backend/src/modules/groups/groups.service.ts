@@ -100,9 +100,9 @@ export class GroupsService {
             id: true,
             title: true,
             status: true,
-            completionPercentage: true,
-            participantCount: true,
+            totalParts: true,
             createdAt: true,
+            _count: { select: { participants: { where: { status: 'ACTIVE' } }, parts: { where: { status: 'COMPLETED' } } } },
           },
           orderBy: { createdAt: 'desc' },
           take: 10,
@@ -113,22 +113,35 @@ export class GroupsService {
     if (!group) throw new NotFoundException('المجموعة غير موجودة');
 
     // Private/invite-only: must be a member to view
+    const g = group as any;
     if (group.visibility !== 'PUBLIC' && userId) {
-      const isMember = group.members.some((m) => m.userId === userId);
+      const isMember = g.members.some((m: any) => m.userId === userId);
       if (!isMember) throw new ForbiddenException('هذه المجموعة خاصة');
     } else if (group.visibility !== 'PUBLIC' && !userId) {
       throw new ForbiddenException('هذه المجموعة خاصة');
     }
 
     const myMembership = userId
-      ? group.members.find((m) => m.userId === userId)
+      ? g.members.find((m: any) => m.userId === userId)
       : null;
+
+    const khatmasWithStats = (g.khatmas ?? []).map((k: any) => ({
+      id: k.id,
+      title: k.title,
+      status: k.status,
+      createdAt: k.createdAt,
+      participantCount: k._count?.participants ?? 0,
+      completionPercentage: k.totalParts > 0
+        ? Math.round(((k._count?.parts ?? 0) / k.totalParts) * 100)
+        : 0,
+    }));
 
     return {
       ...group,
-      memberCount: (group as any)._count.members,
+      memberCount: g._count.members,
       myRole: myMembership?.role ?? null,
       isMember: !!myMembership,
+      khatmas: khatmasWithStats,
       _count: undefined,
     };
   }
