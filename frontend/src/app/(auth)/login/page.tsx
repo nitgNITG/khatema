@@ -32,7 +32,7 @@ function LoginForm() {
     setLoading(true);
     try {
       const res = await api.post('/auth/login', data);
-      setAuth(res.data.data.user, res.data.data.accessToken);
+      setAuth(res.data.data.user, res.data.data.accessToken, res.data.data.sessionDays);
       toast.success('مرحباً بك!');
       router.push(redirect);
     } catch (err: any) {

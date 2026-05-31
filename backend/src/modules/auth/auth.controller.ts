@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Body, Res, Req, UseGuards, Get, HttpCode, HttpStatus,
+  Controller, Post, Body, Res, Req, UseGuards, Get, HttpCode, HttpStatus, ForbiddenException,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -10,25 +10,36 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { SettingsService } from '@/modules/settings/settings.service';
 
 @Throttle({ default: { ttl: 60000, limit: 5 } })
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService, private config: ConfigService) {}
+  constructor(
+    private auth: AuthService,
+    private config: ConfigService,
+    private settings: SettingsService,
+  ) {}
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
+    const mode = await this.settings.getValue('registrationMode');
+    if (mode === 'CLOSED') throw new ForbiddenException('التسجيل مغلق حالياً');
+    if (mode === 'INVITE_ONLY') throw new ForbiddenException('التسجيل بالدعوة فقط');
+
     const result = await this.auth.register(dto, req.ip);
-    this.setRefreshCookie(res, result.refreshToken);
-    return { success: true, data: { user: result.user, accessToken: result.accessToken, expiresIn: 900 }, message: 'تم إنشاء الحساب بنجاح' };
+    await this.setRefreshCookie(res, result.refreshToken);
+    const days = await this.settings.getValue('sessionDurationDays');
+    return { success: true, data: { user: result.user, accessToken: result.accessToken, expiresIn: 900, sessionDays: days }, message: 'تم إنشاء الحساب بنجاح' };
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response, @Req() req: Request) {
     const result = await this.auth.login(dto, req.ip);
-    this.setRefreshCookie(res, result.refreshToken);
-    return { success: true, data: { user: result.user, accessToken: result.accessToken, expiresIn: 900 } };
+    await this.setRefreshCookie(res, result.refreshToken);
+    const days = await this.settings.getValue('sessionDurationDays');
+    return { success: true, data: { user: result.user, accessToken: result.accessToken, expiresIn: 900, sessionDays: days } };
   }
 
   @Post('refresh')
@@ -36,8 +47,9 @@ export class AuthController {
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.['refresh_token'];
     const result = await this.auth.refresh(token, req.ip);
-    this.setRefreshCookie(res, result.refreshToken);
-    return { success: true, data: { accessToken: result.accessToken, expiresIn: 900 } };
+    await this.setRefreshCookie(res, result.refreshToken);
+    const days = await this.settings.getValue('sessionDurationDays');
+    return { success: true, data: { accessToken: result.accessToken, expiresIn: 900, sessionDays: days } };
   }
 
   @Post('logout')
@@ -90,7 +102,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() body: { phone: string; otp: string }, @Res({ passthrough: true }) res: Response) {
     const result = await this.auth.verifyOtp(body.phone, body.otp);
-    this.setRefreshCookie(res, result.refreshToken as string);
+    await this.setRefreshCookie(res, result.refreshToken as string);
     return { success: true, data: result };
   }
 
@@ -102,28 +114,40 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  googleAuth() {
-    // Passport redirects to Google — no body needed
-  }
+  googleAuth() {}
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const profile = req.user as any;
     const result = await this.auth.loginWithGoogle(profile, req.ip);
-    this.setRefreshCookie(res, result.refreshToken);
+    await this.setRefreshCookie(res, result.refreshToken);
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
     const user = encodeURIComponent(JSON.stringify(result.user));
     res.redirect(`${frontendUrl}/auth/callback?token=${result.accessToken}&user=${user}`);
   }
 
-  private setRefreshCookie(res: Response, token: string) {
+  // ── Public settings endpoint (frontend uses this to set cookie lifetime) ──
+  @Get('settings')
+  @HttpCode(HttpStatus.OK)
+  async publicSettings() {
+    const s = await this.settings.get();
+    return {
+      sessionDurationDays: s.sessionDurationDays,
+      registrationMode: s.registrationMode,
+      maintenanceMode: s.maintenanceMode,
+      maintenanceMessage: s.maintenanceMessage,
+    };
+  }
+
+  private async setRefreshCookie(res: Response, token: string) {
+    const days = await this.settings.getValue('sessionDurationDays');
     res.cookie('refresh_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: days * 24 * 60 * 60 * 1000,
       path: '/',
     });
   }

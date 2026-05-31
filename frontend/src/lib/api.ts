@@ -28,15 +28,18 @@ api.interceptors.response.use(
       try {
         const { data } = await api.post('/auth/refresh', {}, { withCredentials: true });
         const newToken = data?.data?.accessToken;
+        const sessionDays = data?.data?.sessionDays ?? 7;
         if (newToken && typeof window !== 'undefined') {
           try {
             const raw = localStorage.getItem('khatma-auth');
             if (raw) {
               const stored = JSON.parse(raw);
               stored.state.accessToken = newToken;
+              stored.state.sessionDays = sessionDays;
               localStorage.setItem('khatma-auth', JSON.stringify(stored));
             }
-            document.cookie = `access_token=${newToken}; path=/; max-age=900; samesite=strict`;
+            const maxAge = sessionDays * 24 * 60 * 60;
+            document.cookie = `access_token=${newToken}; path=/; max-age=${maxAge}; samesite=strict`;
           } catch {}
           original.headers['Authorization'] = `Bearer ${newToken}`;
         }

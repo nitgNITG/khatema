@@ -38,7 +38,7 @@ function RegisterForm() {
     setLoading(true);
     try {
       const res = await api.post('/auth/register', data);
-      setAuth(res.data.data.user, res.data.data.accessToken);
+      setAuth(res.data.data.user, res.data.data.accessToken, res.data.data.sessionDays);
       toast.success('تم إنشاء حسابك! تحقق من بريدك الإلكتروني');
       router.push('/verify-email');
     } catch (err: any) {

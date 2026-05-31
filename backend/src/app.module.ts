@@ -12,6 +12,7 @@ import { GroupsModule } from './modules/groups/groups.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -21,6 +22,7 @@ import { AppController } from './app.controller';
     ScheduleModule.forRoot(),
     DatabaseModule,
     RedisModule,
+    SettingsModule,
     AuthModule,
     UsersModule,
     KhatmaModule,

@@ -16,6 +16,7 @@ import { MailService } from '@/modules/mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { SettingsService } from '@/modules/settings/settings.service';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +26,7 @@ export class AuthService {
     private redis: RedisService,
     private config: ConfigService,
     private mail: MailService,
+    private settings: SettingsService,
   ) {}
 
   async register(dto: RegisterDto, ipAddress?: string) {
@@ -36,9 +38,17 @@ export class AuthService {
     if (dto.phone && existing?.phone === dto.phone) throw new ConflictException('رقم الهاتف مستخدم');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
+    const { defaultMaxCollective, defaultMaxIndividual } = await this.settings.get();
 
     const user = await this.db.user.create({
-      data: { email: dto.email, phone: dto.phone, passwordHash, displayName: dto.displayName },
+      data: {
+        email: dto.email,
+        phone: dto.phone,
+        passwordHash,
+        displayName: dto.displayName,
+        maxCollectiveKhatmas: defaultMaxCollective,
+        maxIndividualKhatmas: defaultMaxIndividual,
+      },
       select: { id: true, displayName: true, email: true, role: true },
     });
 
@@ -198,6 +208,7 @@ export class AuthService {
       : null;
 
     if (!user) {
+      const { defaultMaxCollective, defaultMaxIndividual } = await this.settings.get();
       user = await this.db.user.create({
         data: {
           email: profile.email,
@@ -205,6 +216,8 @@ export class AuthService {
           avatarUrl: profile.avatarUrl,
           emailVerified: true,
           status: 'ACTIVE',
+          maxCollectiveKhatmas: defaultMaxCollective,
+          maxIndividualKhatmas: defaultMaxIndividual,
         },
       });
     } else if (!user.avatarUrl && profile.avatarUrl) {
@@ -247,9 +260,14 @@ export class AuthService {
     await this.db.session.updateMany({ where: { userId }, data: { revokedAt: new Date() } });
   }
 
+  async getSessionDurationDays(): Promise<number> {
+    return this.settings.getValue('sessionDurationDays');
+  }
+
   private async saveRefreshToken(userId: string, refreshToken: string, ipAddress?: string) {
+    const days = await this.settings.getValue('sessionDurationDays');
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + days);
 
     await this.db.session.create({
       data: { userId, refreshToken, expiresAt, ipAddress },

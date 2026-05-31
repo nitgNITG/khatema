@@ -379,6 +379,26 @@ enum InvitationStatus {
 }
 
 // ─────────────────────────────────────────
+// APP SETTINGS (super-admin configurable)
+// ─────────────────────────────────────────
+
+model AppSettings {
+  id                      String   @id @default("singleton")
+  sessionDurationDays     Int      @default(7)
+  registrationMode        String   @default("OPEN")   // OPEN | INVITE_ONLY | CLOSED
+  defaultMaxCollective    Int      @default(3)
+  defaultMaxIndividual    Int      @default(3)
+  emailNotificationsEnabled Boolean @default(true)
+  maxKhatmaParticipants   Int      @default(100)
+  maintenanceMode         Boolean  @default(false)
+  maintenanceMessage      String?
+  updatedAt               DateTime @updatedAt
+  updatedById             String?
+
+  @@map("app_settings")
+}
+
+// ─────────────────────────────────────────
 // AUDIT LOGS
 // ─────────────────────────────────────────
 
