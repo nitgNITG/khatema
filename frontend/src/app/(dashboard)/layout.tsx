@@ -25,6 +25,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/dashboard" className="text-xl font-bold text-primary">ختمة</Link>
           <div className="flex items-center gap-2">
+            {user?.role === 'SUPER_ADMIN' && (
+              <Link href="/admin" className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors">
+                ⚙️ Admin
+              </Link>
+            )}
             <ThemeToggle />
             <NotificationBell />
             <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
