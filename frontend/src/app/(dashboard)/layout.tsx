@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/lib/api';
 import NotificationBell from '@/components/NotificationBell';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, clearAuth } = useAuthStore();
@@ -20,10 +21,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 bg-white border-b border-border">
+      <header className="sticky top-0 z-40 bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/dashboard" className="text-xl font-bold text-primary">ختمة</Link>
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             <NotificationBell />
             <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             {user?.avatarUrl ? (

@@ -16,7 +16,7 @@ function KhatmaCard({ k, showJoin, joinDisabled, joinDisabledReason, onJoin, joi
   joining?: boolean;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-border p-5 space-y-3 hover:border-primary/30 hover:shadow-sm transition-all">
+    <div className="bg-card rounded-2xl border border-border p-5 space-y-3 hover:border-primary/30 hover:shadow-sm transition-all">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/khatma/${k.id}`} className="font-semibold line-clamp-1 hover:text-primary transition-colors">
           {k.title}
@@ -32,7 +32,7 @@ function KhatmaCard({ k, showJoin, joinDisabled, joinDisabledReason, onJoin, joi
         <p className="text-xs text-muted">بواسطة {k.creator.displayName}</p>
       )}
 
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-border rounded-full overflow-hidden">
         <div
           className="h-full bg-primary rounded-full transition-all"
           style={{ width: `${k.completionPercentage}%` }}
@@ -66,7 +66,7 @@ function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-36 bg-gray-100 rounded-2xl animate-pulse" />
+        <div key={i} className="h-36 bg-border/50 rounded-2xl animate-pulse" />
       ))}
     </div>
   );
@@ -157,7 +157,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">مرحباً، {user?.displayName} 👋</h1>
         {atBothLimits ? (
-          <span title={limitTooltip} className="bg-gray-200 text-gray-400 px-5 py-2.5 rounded-xl font-semibold cursor-not-allowed select-none">
+          <span title={limitTooltip} className="bg-border text-muted px-5 py-2.5 rounded-xl font-semibold cursor-not-allowed select-none">
             + ختمة جديدة
           </span>
         ) : (
@@ -174,7 +174,7 @@ export default function DashboardPage() {
         {loadingMine ? (
           <SkeletonGrid />
         ) : !myKhatmas || myKhatmas.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl text-muted">
+          <div className="text-center py-12 bg-border/30 rounded-2xl text-muted">
             <p className="text-3xl mb-3">📖</p>
             <p className="font-medium">لم تنضم لأي ختمة بعد</p>
             <p className="text-sm mt-1">أنشئ ختمة أو انضم لختمة من القائمة أدناه</p>
@@ -209,16 +209,16 @@ export default function DashboardPage() {
               placeholder="ابحث باسم الختمة..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full border border-border rounded-xl pr-9 pl-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
+              className="w-full border border-border rounded-xl pr-9 pl-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-card text-foreground"
             />
           </div>
-          <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          <div className="flex gap-1 bg-border/40 rounded-xl p-1">
             {([['', 'الكل'], ['ACTIVE', 'نشطة'], ['COMPLETED', 'مكتملة']] as [StatusFilter, string][]).map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => { setStatusFilter(val); setDiscoverPage(1); }}
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  statusFilter === val ? 'bg-white text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                  statusFilter === val ? 'bg-card text-foreground shadow-sm' : 'text-muted hover:text-foreground'
                 }`}
               >
                 {label}
@@ -230,7 +230,7 @@ export default function DashboardPage() {
         {loadingPublic ? (
           <SkeletonGrid />
         ) : discoverItems.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-2xl text-muted">
+          <div className="text-center py-10 bg-border/30 rounded-2xl text-muted">
             <p className="text-2xl mb-2">🔍</p>
             <p className="font-medium">
               {searchQ ? `لا نتائج لـ "${searchQ}"` : 'لا توجد ختمات عامة حالياً'}
@@ -256,7 +256,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setDiscoverPage((p) => Math.max(1, p - 1))}
                   disabled={discoverPage === 1 || isFetching}
-                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-gray-50"
+                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-border/40"
                 >
                   ← السابق
                 </button>
@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setDiscoverPage((p) => Math.min(totalPages, p + 1))}
                   disabled={discoverPage === totalPages || isFetching}
-                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-gray-50"
+                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-border/40"
                 >
                   التالي →
                 </button>
