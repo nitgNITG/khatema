@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
 
 @Injectable()
@@ -84,6 +84,21 @@ export class UsersService {
       data: { notifyBeforeHours: valid },
     });
     return { success: true, notifyBeforeHours: valid };
+  }
+
+  async uploadAvatar(userId: string, file: Express.Multer.File): Promise<{ avatarUrl: string }> {
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('حجم الصورة يجب ألا يتجاوز 2 ميجابايت');
+    }
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimes.includes(file.mimetype)) {
+      throw new BadRequestException('نوع الملف غير مدعوم. استخدم JPEG أو PNG أو WebP');
+    }
+    const base64 = file.buffer.toString('base64');
+    const avatarUrl = `data:${file.mimetype};base64,${base64}`;
+
+    await this.db.user.update({ where: { id: userId }, data: { avatarUrl } });
+    return { avatarUrl };
   }
 
   async updateProfile(userId: string, data: { displayName?: string; avatarUrl?: string }) {

@@ -434,6 +434,68 @@ export class KhatmaService {
     };
   }
 
+  async getParticipants(khatmaId: string, requesterId: string) {
+    const khatma = await this.db.khatma.findFirst({
+      where: { id: khatmaId, deletedAt: null },
+      select: { id: true, title: true },
+    });
+    if (!khatma) throw new NotFoundException('الختمة غير موجودة');
+
+    const requesterParticipant = await this.db.khatmaParticipant.findUnique({
+      where: { khatmaId_userId: { khatmaId, userId: requesterId } },
+    });
+    if (!requesterParticipant || requesterParticipant.status !== 'ACTIVE') {
+      throw new ForbiddenException('يجب أن تكون عضواً في الختمة');
+    }
+
+    const participants = await this.db.khatmaParticipant.findMany({
+      where: { khatmaId, status: 'ACTIVE' },
+      include: {
+        user: { select: { id: true, displayName: true, email: true, avatarUrl: true } },
+        reservedParts: {
+          where: { khatmaId },
+          include: { part: { select: { partNumber: true } } },
+        },
+      },
+      orderBy: { joinedAt: 'asc' },
+    });
+
+    const mapped = participants.map((p) => {
+      const reserved = p.reservedParts.filter((r: any) => r.status === 'RESERVED');
+      const completed = p.reservedParts.filter((r: any) => r.status === 'COMPLETED');
+      const reservedCount = reserved.length;
+      const completedCount = completed.length;
+      const completionPct = Math.round((completedCount / 30) * 100);
+
+      return {
+        id: p.id,
+        role: p.role,
+        joinedAt: p.joinedAt,
+        user: p.user,
+        reservedCount,
+        completedCount,
+        completionPct,
+        reservedParts: reserved.map((r: any) => ({
+          partNumber: r.part.partNumber,
+          reservedAt: r.reservedAt,
+        })),
+        completedParts: completed.map((r: any) => ({
+          partNumber: r.part.partNumber,
+          completedAt: r.completedAt,
+        })),
+      };
+    });
+
+    // Sort: owner first, then by completedCount desc
+    mapped.sort((a, b) => {
+      if (a.role === 'OWNER' && b.role !== 'OWNER') return -1;
+      if (b.role === 'OWNER' && a.role !== 'OWNER') return 1;
+      return b.completedCount - a.completedCount;
+    });
+
+    return { khatmaTitle: khatma.title, participants: mapped };
+  }
+
   private formatKhatma(k: any) {
     const completedParts = k.parts?.filter((p: any) => p.status === 'COMPLETED').length ?? 0;
     const totalParts = k.totalParts ?? 30;

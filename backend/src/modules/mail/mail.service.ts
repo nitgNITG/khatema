@@ -122,6 +122,33 @@ export class MailService {
     });
   }
 
+  async sendPasswordReset(toEmail: string, resetUrl: string) {
+    if (!this.transporter) {
+      this.logger.log(`[MAIL] Password reset for ${toEmail}: ${resetUrl}`);
+      return;
+    }
+
+    const from = this.config.get<string>('SMTP_FROM', 'ختمة <noreply@khatema.app>');
+    await this.transporter.sendMail({
+      from,
+      to: toEmail,
+      subject: 'إعادة تعيين كلمة المرور',
+      html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+          <h2 style="color: #2d6a4f;">إعادة تعيين كلمة المرور</h2>
+          <p>تلقّينا طلباً لإعادة تعيين كلمة المرور الخاصة بحسابك.</p>
+          <p>انقر على الزر أدناه لإنشاء كلمة مرور جديدة:</p>
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${resetUrl}" style="background-color: #2d6a4f; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold;">
+              إعادة تعيين كلمة المرور
+            </a>
+          </div>
+          <p style="color: #888; font-size: 13px;">هذا الرابط صالح لمدة ساعة واحدة فقط. إذا لم تطلب إعادة التعيين يمكنك تجاهل هذا البريد.</p>
+        </div>
+      `,
+    });
+  }
+
   async sendParticipantReminder(opts: {
     toEmail: string;
     displayName: string;

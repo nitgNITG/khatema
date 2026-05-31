@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
@@ -23,9 +23,11 @@ function formatDate(dateStr?: string | null) {
 }
 
 export default function ProfilePage() {
-  const { user, clearAuth } = useAuthStore();
+  const { user, clearAuth, updateUser } = useAuthStore();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [collective, setCollective] = useState<number | null>(null);
   const [individual, setIndividual] = useState<number | null>(null);
   const [notifyHours, setNotifyHours] = useState<number[]>([24]);
@@ -104,6 +106,32 @@ export default function ProfilePage() {
     router.push('/login');
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('حجم الصورة يجب ألا يتجاوز 2 ميجابايت');
+      return;
+    }
+    setAvatarLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/users/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const { avatarUrl } = res.data;
+      updateUser({ avatarUrl });
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      toast.success('تم تحديث الصورة');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'فشل رفع الصورة');
+    } finally {
+      setAvatarLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const initials = user?.displayName?.slice(0, 2) ?? '؟';
 
   return (
@@ -115,13 +143,34 @@ export default function ProfilePage() {
 
       {/* Avatar + name */}
       <div className="bg-white border border-border rounded-2xl p-6 flex items-center gap-5">
-        {user?.avatarUrl ? (
-          <img src={user.avatarUrl} alt={user.displayName} className="w-20 h-20 rounded-full object-cover border-2 border-primary/20" />
-        ) : (
-          <div className="w-20 h-20 rounded-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold border-2 border-primary/20">
-            {initials}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-primary/20 flex-shrink-0 group"
+          title="تغيير الصورة"
+        >
+          {avatarLoading ? (
+            <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.displayName} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-primary/10 text-primary flex items-center justify-center text-2xl font-bold">
+              {initials}
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-white text-xs font-medium">تغيير</span>
           </div>
-        )}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleAvatarChange}
+        />
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold truncate">{user?.displayName}</h1>
           {user?.email && <p className="text-sm text-muted mt-0.5" dir="ltr">{user.email}</p>}
@@ -345,6 +394,12 @@ export default function ProfilePage() {
             <h2 className="font-semibold text-red-700">لوحة الإدارة</h2>
             <p className="text-xs text-muted mt-0.5">عمليات خطيرة — لا يمكن التراجع عنها</p>
           </div>
+          <Link
+            href="/admin"
+            className="block w-full text-center border border-red-300 text-red-700 rounded-xl py-2.5 text-sm font-semibold hover:bg-red-50 transition-colors"
+          >
+            لوحة الإدارة (المستخدمون والإحصائيات)
+          </Link>
           <button
             onClick={handleResetKhatmas}
             disabled={resetKhatmasMutation.isPending}

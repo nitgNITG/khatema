@@ -1,7 +1,9 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Body, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { memoryStorage } from 'multer';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -32,6 +34,12 @@ export class UsersController {
     @Body() body: { notifyBeforeHours: number[] },
   ) {
     return this.users.updateNotificationPrefs(user.id, body.notifyBeforeHours);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  uploadAvatar(@UploadedFile() file: Express.Multer.File, @CurrentUser() user: any) {
+    return this.users.uploadAvatar(user.id, file);
   }
 
   @Get('me/khatmas')

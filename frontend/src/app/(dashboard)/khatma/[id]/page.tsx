@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -188,6 +189,12 @@ export default function KhatmaDetailPage() {
                 مكتملة ✓
               </span>
             )}
+            <Link
+              href={`/khatma/${id}/participants`}
+              className="bg-gray-100 text-gray-700 border border-gray-200 rounded-xl px-4 py-2 text-sm font-semibold hover:bg-gray-200 transition-colors"
+            >
+              المشاركون
+            </Link>
             {data.status === 'ACTIVE' && (
               <button
                 onClick={() => { setShowInvite(true); if (!inviteLink) getLinkMutation.mutate(); }}
