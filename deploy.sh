@@ -7,16 +7,18 @@ BRANCH="${1:-main}"
 
 echo "==> Deploying branch: $BRANCH"
 
-# Pull latest code
+# Pull latest code — force reset so local changes never block the deploy
 if [ -d "$APP_DIR/.git" ]; then
   cd "$APP_DIR"
   git fetch origin
   git checkout "$BRANCH"
-  git pull origin "$BRANCH"
+  git reset --hard "origin/$BRANCH"
 else
   git clone -b "$BRANCH" "$REPO" "$APP_DIR"
   cd "$APP_DIR"
 fi
+
+echo "************** git pull origin $BRANCH success **************"
 
 # ── Backend ──────────────────────────────────────────────────
 echo "==> Building backend..."
