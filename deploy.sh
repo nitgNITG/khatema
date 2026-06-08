@@ -29,7 +29,7 @@ npm run build
 # ── Frontend ─────────────────────────────────────────────────
 echo "==> Building frontend..."
 cd "$APP_DIR/frontend"
-npm ci --omit=dev
+npm ci
 npm run build
 
 # ── Restart with PM2 ─────────────────────────────────────────

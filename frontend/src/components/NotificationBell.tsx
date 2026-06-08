@@ -77,10 +77,10 @@ export default function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
+        className="relative p-2 rounded-xl hover:bg-border/60 transition-colors"
         aria-label="الإشعارات"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
@@ -92,7 +92,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-border rounded-2xl shadow-lg z-50 overflow-hidden" dir="rtl">
+        <div className="absolute left-0 top-full mt-2 w-80 bg-card border border-border rounded-2xl shadow-lg z-50 overflow-hidden" dir="rtl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-sm">الإشعارات</h3>
             <div className="flex items-center gap-3">
@@ -127,7 +127,7 @@ export default function NotificationBell() {
                 <div
                   key={n.id}
                   className={`px-4 py-3 border-b border-border last:border-0 transition-colors ${
-                    !n.isRead ? 'bg-primary/5' : 'hover:bg-gray-50'
+                    !n.isRead ? 'bg-primary/5' : 'hover:bg-border/40'
                   }`}
                 >
                   {n.khatmaId ? (
@@ -157,7 +157,7 @@ function NotifItem({ n }: { n: any }) {
       <div className="flex items-start gap-2">
         <span className="text-base mt-0.5">{typeIcon(n.type)}</span>
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium truncate ${!n.isRead ? 'text-foreground' : 'text-gray-700'}`}>{n.title}</p>
+          <p className={`text-sm font-medium truncate ${!n.isRead ? 'text-foreground' : 'text-muted'}`}>{n.title}</p>
           <p className="text-xs text-muted mt-0.5 line-clamp-2">{n.body}</p>
         </div>
         {!n.isRead && <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />}

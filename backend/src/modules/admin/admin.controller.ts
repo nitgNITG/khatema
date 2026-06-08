@@ -3,12 +3,25 @@ import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 import { Roles } from '@/common/decorators/roles.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('SUPER_ADMIN')
 export class AdminController {
   constructor(private admin: AdminService) {}
+
+  @Get('settings')
+  @HttpCode(HttpStatus.OK)
+  getSettings() {
+    return this.admin.getSettings();
+  }
+
+  @Patch('settings')
+  @HttpCode(HttpStatus.OK)
+  updateSettings(@Body() body: Record<string, any>, @CurrentUser() user: any) {
+    return this.admin.updateSettings(body, user.id);
+  }
 
   @Get('stats')
   @HttpCode(HttpStatus.OK)

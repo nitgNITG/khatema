@@ -1,9 +1,18 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '@/database/database.service';
+import { SettingsService, AppSettingsData } from '@/modules/settings/settings.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private settings: SettingsService) {}
+
+  async getSettings() {
+    return this.settings.get();
+  }
+
+  async updateSettings(data: Partial<AppSettingsData>, updatedById: string) {
+    return this.settings.update(data, updatedById);
+  }
 
   async getStats() {
     const [
