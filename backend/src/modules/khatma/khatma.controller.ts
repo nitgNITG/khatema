@@ -28,6 +28,16 @@ export class KhatmaController {
     return this.khatmaService.getInvitationByToken(token);
   }
 
+  @Get('public/stats')
+  getPublicStats() {
+    return this.khatmaService.getPublicStats();
+  }
+
+  @Get('public/near-completion')
+  getNearCompletion() {
+    return this.khatmaService.getNearCompletion();
+  }
+
   // ── Dynamic :id routes ─────────────────────────────────────────────
 
   @Post()

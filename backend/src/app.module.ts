@@ -13,6 +13,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { ArticlesModule } from './modules/articles/articles.module';
+import { SuggestionsModule } from './modules/suggestions/suggestions.module';
+import { AdsModule } from './modules/ads/ads.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -30,6 +33,9 @@ import { AppController } from './app.controller';
     NotificationsModule,
     WebsocketModule,
     AdminModule,
+    ArticlesModule,
+    SuggestionsModule,
+    AdsModule,
   ],
   controllers: [AppController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

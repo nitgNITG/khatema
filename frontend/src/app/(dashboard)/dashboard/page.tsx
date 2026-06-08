@@ -6,7 +6,9 @@ import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { useT } from '@/store/langStore';
 
+/* ── Khatma card ── */
 function KhatmaCard({ k, showJoin, joinDisabled, joinDisabledReason, onJoin, joining }: {
   k: any;
   showJoin?: boolean;
@@ -15,33 +17,50 @@ function KhatmaCard({ k, showJoin, joinDisabled, joinDisabledReason, onJoin, joi
   onJoin?: (id: string) => void;
   joining?: boolean;
 }) {
+  const { t, isAr } = useT();
+  const pct = k.completionPercentage ?? 0;
+  const isCompleted = k.status === 'COMPLETED';
+
   return (
-    <div className="bg-card rounded-2xl border border-border p-5 space-y-3 hover:border-primary/30 hover:shadow-sm transition-all">
+    <div className="card-lift bg-card rounded-2xl border border-border p-5 space-y-3 hover:border-primary/40 transition-all">
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/khatma/${k.id}`} className="font-semibold line-clamp-1 hover:text-primary transition-colors">
+        <Link href={`/khatma/${k.id}`} className="font-bold line-clamp-1 hover:text-primary transition-colors">
           {k.title}
         </Link>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${
-          k.status === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+        <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold shrink-0 ${
+          isCompleted
+            ? 'bg-success/15 text-success'
+            : 'bg-primary/10 text-primary'
         }`}>
-          {k.status === 'COMPLETED' ? 'مكتملة' : 'نشطة'}
+          {isCompleted ? `✅ ${t('completed')}` : `🔵 ${t('active')}`}
         </span>
       </div>
 
       {k.creator && (
-        <p className="text-xs text-muted">بواسطة {k.creator.displayName}</p>
+        <p className="text-xs text-muted">{isAr ? 'بواسطة' : 'by'} {k.creator.displayName}</p>
       )}
 
-      <div className="h-2 bg-border rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary rounded-full transition-all"
-          style={{ width: `${k.completionPercentage}%` }}
-        />
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs text-muted">
+          <span>{t('progress')}</span>
+          <span className="font-bold text-primary">{pct}%</span>
+        </div>
+        <div className="h-2.5 bg-border rounded-full overflow-hidden">
+          <div
+            className="progress-bar h-full rounded-full"
+            style={{
+              width: `${pct}%`,
+              background: isCompleted
+                ? 'var(--success)'
+                : 'linear-gradient(to left, var(--primary), var(--secondary))',
+            }}
+          />
+        </div>
       </div>
 
-      <div className="flex justify-between items-center text-sm text-muted">
-        <span>{k.completionPercentage}% مكتمل</span>
-        <span>{k.participantCount} مشارك</span>
+      <div className="flex justify-between items-center text-xs text-muted">
+        <span>👥 {k.participantCount ?? 0} {t('participants')}</span>
+        <span>{k.type === 'COLLECTIVE' ? t('collective') : t('individual')}</span>
       </div>
 
       {showJoin && (
@@ -49,24 +68,38 @@ function KhatmaCard({ k, showJoin, joinDisabled, joinDisabledReason, onJoin, joi
           onClick={() => !joinDisabled && onJoin?.(k.id)}
           disabled={joining || joinDisabled}
           title={joinDisabled ? joinDisabledReason : undefined}
-          className={`w-full mt-1 rounded-xl py-2 text-sm font-semibold transition-colors ${
+          className={`w-full mt-1 rounded-xl py-2.5 text-sm font-bold transition-all ${
             joinDisabled
-              ? 'border border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
-              : 'border border-primary text-primary hover:bg-primary/5 disabled:opacity-50'
+              ? 'bg-border/50 text-muted cursor-not-allowed'
+              : 'btn-duo btn-duo-outline border-primary text-primary hover:bg-primary/5 disabled:opacity-50'
           }`}
         >
-          {joining ? 'جارٍ الانضمام...' : joinDisabled ? 'وصلت للحد الأقصى' : 'انضم للختمة'}
+          {joining ? t('joining') : joinDisabled ? t('reachedLimit') : t('joinKhatma')}
         </button>
       )}
     </div>
   );
 }
 
+/* ── Stat card ── */
+function StatCard({ icon, label, value, color }: { icon: string; label: string; value: string | number; color: string }) {
+  return (
+    <div className={`card-lift rounded-2xl border p-5 flex items-center gap-4 ${color}`}>
+      <div className="text-3xl">{icon}</div>
+      <div>
+        <p className="text-2xl font-extrabold">{value}</p>
+        <p className="text-xs text-muted mt-0.5">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Skeleton ── */
 function SkeletonGrid() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-36 bg-border/50 rounded-2xl animate-pulse" />
+        <div key={i} className="h-40 bg-border/50 rounded-2xl animate-pulse" />
       ))}
     </div>
   );
@@ -77,19 +110,19 @@ type StatusFilter = 'ACTIVE' | 'COMPLETED' | '';
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const { t, isAr } = useT();
 
   const [searchInput, setSearchInput] = useState('');
   const [searchQ, setSearchQ] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ACTIVE');
   const [discoverPage, setDiscoverPage] = useState(1);
 
-  // Debounce search input
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setSearchQ(searchInput);
       setDiscoverPage(1);
     }, 350);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
   const { data: myKhatmas, isLoading: loadingMine } = useQuery({
@@ -116,20 +149,17 @@ export default function DashboardPage() {
   });
 
   const joinMutation = useMutation({
-    mutationFn: (khatmaId: string) =>
-      api.post(`/khatmas/${khatmaId}/join`, {}).then((r) => r.data),
+    mutationFn: (khatmaId: string) => api.post(`/khatmas/${khatmaId}/join`, {}).then((r) => r.data),
     onSuccess: (res) => {
       if (res.status === 'PENDING') {
-        toast.success('تم إرسال طلب الانضمام، بانتظار الموافقة');
+        toast.success(isAr ? 'تم إرسال طلب الانضمام، بانتظار الموافقة' : 'Join request sent, awaiting approval');
       } else {
-        toast.success('انضممت للختمة!');
+        toast.success(isAr ? 'انضممت للختمة! 🎉' : 'Joined the khatma! 🎉');
       }
       queryClient.invalidateQueries({ queryKey: ['my-khatmas'] });
       queryClient.invalidateQueries({ queryKey: ['public-khatmas'] });
     },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || 'حدث خطأ');
-    },
+    onError: (err: any) => toast.error(err.response?.data?.message || (isAr ? 'حدث خطأ' : 'An error occurred')),
   });
 
   const myIds = new Set((myKhatmas ?? []).map((k: any) => k.id));
@@ -138,48 +168,96 @@ export default function DashboardPage() {
 
   const activeCollective = (myKhatmas ?? []).filter((k: any) => k.type === 'COLLECTIVE' && k.status === 'ACTIVE').length;
   const activeIndividual = (myKhatmas ?? []).filter((k: any) => k.type === 'INDIVIDUAL' && k.status === 'ACTIVE').length;
+  const completedCount = (myKhatmas ?? []).filter((k: any) => k.status === 'COMPLETED').length;
+  const totalCount = (myKhatmas ?? []).length;
+
   const maxCollective = profile?.maxCollectiveKhatmas ?? 1;
   const maxIndividual = profile?.maxIndividualKhatmas ?? 1;
   const atCollectiveLimit = activeCollective >= maxCollective;
   const atBothLimits = atCollectiveLimit && activeIndividual >= maxIndividual;
 
   const limitTooltip = atBothLimits
-    ? `وصلت للحد الأقصى (${maxCollective} جماعية، ${maxIndividual} فردية). غيّر الحد من بروفايلك`
+    ? (isAr ? `وصلت للحد الأقصى (${maxCollective} جماعية، ${maxIndividual} فردية)` : `Reached limit (${maxCollective} collective, ${maxIndividual} individual)`)
     : atCollectiveLimit
-      ? `وصلت لحد الختمات الجماعية (${maxCollective}). يمكنك إنشاء ختمة فردية فقط`
+      ? (isAr ? `وصلت لحد الختمات الجماعية (${maxCollective})` : `Reached collective limit (${maxCollective})`)
       : activeIndividual >= maxIndividual
-        ? `وصلت لحد الختمات الفردية (${maxIndividual}). يمكنك إنشاء ختمة جماعية فقط`
+        ? (isAr ? `وصلت لحد الختمات الفردية (${maxIndividual})` : `Reached individual limit (${maxIndividual})`)
         : '';
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? t('goodMorning') : hour < 17 ? t('goodAfternoon') : t('goodEvening');
+
+  // Replace {count} placeholder in hasActiveKhatmas
+  const activeCountText = t('hasActiveKhatmas').replace('{count}', String(activeCollective + activeIndividual));
+
+  const statusOptions: [StatusFilter, string][] = [
+    ['', t('all')],
+    ['ACTIVE', t('active')],
+    ['COMPLETED', t('completed')],
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-10">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">مرحباً، {user?.displayName} 👋</h1>
-        {atBothLimits ? (
-          <span title={limitTooltip} className="bg-border text-muted px-5 py-2.5 rounded-xl font-semibold cursor-not-allowed select-none">
-            + ختمة جديدة
-          </span>
-        ) : (
-          <Link href="/khatma/new" title={limitTooltip || undefined}
-            className="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-primary/90 transition-colors">
-            + ختمة جديدة
-          </Link>
-        )}
+    <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 pb-16">
+
+      {/* ── Welcome banner ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-8 text-white">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full" />
+        <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-white/5 rounded-full" />
+        <div className="relative flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-white/80 text-sm">{greeting}،</p>
+            <h1 className="text-2xl font-extrabold mt-0.5">{user?.displayName} 👋</h1>
+            <p className="text-white/70 text-sm mt-1">
+              {totalCount === 0 ? t('startFirstKhatma') : activeCountText}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link href="/groups" className="btn-duo btn-duo-ghost !text-white !border-white/30 text-sm px-4 py-2">
+              👥 {t('groups')}
+            </Link>
+            {atBothLimits ? (
+              <span title={limitTooltip} className="btn-duo bg-white/20 text-white border-white/10 text-sm px-5 py-2 cursor-not-allowed select-none">
+                + {isAr ? 'ختمة' : 'Khatma'}
+              </span>
+            ) : (
+              <Link href="/khatma/new" title={limitTooltip || undefined} className="btn-duo bg-white text-primary border-white/50 font-bold text-sm px-5 py-2">
+                + {t('newKhatma')}
+              </Link>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* My Khatmas */}
+      {/* ── Stats row ── */}
+      {!loadingMine && (myKhatmas ?? []).length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard icon="📖" label={t('totalKhatmas')} value={totalCount} color="bg-card border-border" />
+          <StatCard icon="🔵" label={t('activeNow')} value={activeCollective + activeIndividual} color="bg-primary/5 border-primary/20" />
+          <StatCard icon="✅" label={t('completed')} value={completedCount} color="bg-success/5 border-success/20" />
+          <StatCard icon="🤝" label={t('collectiveActive')} value={activeCollective} color="bg-secondary/5 border-secondary/20" />
+        </div>
+      )}
+
+      {/* ── My Khatmas ── */}
       <section>
-        <h2 className="text-lg font-semibold mb-4">ختماتي</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">{t('myKhatmas')}</h2>
+          {!atBothLimits && (
+            <Link href="/khatma/new" className="text-sm text-primary font-semibold hover:underline">
+              + {isAr ? 'إضافة' : 'Add'}
+            </Link>
+          )}
+        </div>
+
         {loadingMine ? (
           <SkeletonGrid />
         ) : !myKhatmas || myKhatmas.length === 0 ? (
-          <div className="text-center py-12 bg-border/30 rounded-2xl text-muted">
-            <p className="text-3xl mb-3">📖</p>
-            <p className="font-medium">لم تنضم لأي ختمة بعد</p>
-            <p className="text-sm mt-1">أنشئ ختمة أو انضم لختمة من القائمة أدناه</p>
-            <Link href="/khatma/new" className="mt-4 inline-block bg-primary text-white px-6 py-2.5 rounded-xl font-semibold text-sm">
-              إنشاء ختمة
+          <div className="text-center py-14 bg-card border border-dashed border-border rounded-3xl text-muted">
+            <p className="text-5xl mb-4">📖</p>
+            <p className="font-bold text-lg text-foreground mb-1">{t('noKhatmasYet')}</p>
+            <p className="text-sm mb-5">{t('noKhatmasHint')}</p>
+            <Link href="/khatma/new" className="btn-duo btn-duo-primary text-sm px-6 py-2.5">
+              {t('createKhatma')}
             </Link>
           </div>
         ) : (
@@ -189,36 +267,35 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* Discover */}
+      {/* ── Discover ── */}
       <section>
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-          <h2 className="text-lg font-semibold">اكتشف الختمات</h2>
-          <Link href="/groups" className="text-sm text-primary font-medium hover:underline">
-            👥 مجموعاتي
-          </Link>
+          <h2 className="text-lg font-bold">{t('discoverKhatmas')} 🌐</h2>
         </div>
 
-        {/* Search + Filter */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        {/* Search + Filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
           <div className="relative flex-1">
-            <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
             <input
               type="text"
-              placeholder="ابحث باسم الختمة..."
+              placeholder={t('searchKhatma')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full border border-border rounded-xl pr-9 pl-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-card text-foreground"
+              className="w-full border border-border bg-card rounded-xl pr-10 pl-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
             />
           </div>
           <div className="flex gap-1 bg-border/40 rounded-xl p-1">
-            {([['', 'الكل'], ['ACTIVE', 'نشطة'], ['COMPLETED', 'مكتملة']] as [StatusFilter, string][]).map(([val, label]) => (
+            {statusOptions.map(([val, label]) => (
               <button
                 key={val}
                 onClick={() => { setStatusFilter(val); setDiscoverPage(1); }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  statusFilter === val ? 'bg-card text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
+                  statusFilter === val
+                    ? 'bg-card text-foreground shadow-sm'
+                    : 'text-muted hover:text-foreground'
                 }`}
               >
                 {label}
@@ -230,43 +307,44 @@ export default function DashboardPage() {
         {loadingPublic ? (
           <SkeletonGrid />
         ) : discoverItems.length === 0 ? (
-          <div className="text-center py-10 bg-border/30 rounded-2xl text-muted">
-            <p className="text-2xl mb-2">🔍</p>
+          <div className="text-center py-12 bg-card border border-dashed border-border rounded-3xl text-muted">
+            <p className="text-4xl mb-3">{searchQ ? '🔍' : '🌙'}</p>
             <p className="font-medium">
-              {searchQ ? `لا نتائج لـ "${searchQ}"` : 'لا توجد ختمات عامة حالياً'}
+              {searchQ
+                ? `${t('noResults')} "${searchQ}"`
+                : t('noPublicKhatmas')}
             </p>
           </div>
         ) : (
           <>
-            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-opacity ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-opacity duration-200 ${isFetching ? 'opacity-60' : 'opacity-100'}`}>
               {discoverItems.map((k: any) => (
                 <KhatmaCard
                   key={k.id} k={k} showJoin
                   joinDisabled={atCollectiveLimit}
-                  joinDisabledReason={`وصلت لحد الختمات الجماعية (${maxCollective})`}
+                  joinDisabledReason={isAr ? `وصلت لحد الختمات الجماعية (${maxCollective})` : `Reached collective limit (${maxCollective})`}
                   onJoin={(id) => joinMutation.mutate(id)}
                   joining={joinMutation.isPending && joinMutation.variables === k.id}
                 />
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-4">
+              <div className="flex items-center justify-center gap-2 mt-6">
                 <button
                   onClick={() => setDiscoverPage((p) => Math.max(1, p - 1))}
                   disabled={discoverPage === 1 || isFetching}
-                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-border/40"
+                  className="px-4 py-2 rounded-xl border border-border text-sm font-semibold disabled:opacity-40 hover:bg-border/40 transition-colors"
                 >
-                  ← السابق
+                  {t('prev')}
                 </button>
-                <span className="text-sm text-muted">{discoverPage} / {totalPages}</span>
+                <span className="text-sm text-muted font-medium">{discoverPage} / {totalPages}</span>
                 <button
                   onClick={() => setDiscoverPage((p) => Math.min(totalPages, p + 1))}
                   disabled={discoverPage === totalPages || isFetching}
-                  className="px-3 py-1.5 rounded-lg border border-border text-sm disabled:opacity-40 hover:bg-border/40"
+                  className="px-4 py-2 rounded-xl border border-border text-sm font-semibold disabled:opacity-40 hover:bg-border/40 transition-colors"
                 >
-                  التالي →
+                  {t('next')}
                 </button>
               </div>
             )}

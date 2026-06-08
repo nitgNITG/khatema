@@ -8,6 +8,7 @@ const arabic = IBM_Plex_Sans_Arabic({
   weight: ['400', '500', '600', '700'],
   variable: '--font-arabic',
   display: 'swap',
+  preload: false,
 });
 
 export const metadata: Metadata = {

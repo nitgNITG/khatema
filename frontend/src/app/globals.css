@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F8F5EE;
+  --background: #F5F7FA;
   --foreground: #1A1A2E;
   --primary: #1B6B4A;
+  --primary-dark: #145238;
   --primary-foreground: #ffffff;
   --secondary: #C8A84B;
+  --secondary-dark: #A8882E;
   --muted: #6B7280;
-  --border: #E5E7EB;
+  --border: #E2E8F0;
   --card: #ffffff;
   --destructive: #DC2626;
+  --success: #16A34A;
+  --warning: #D97706;
+  --info: #2563EB;
 }
 
 /* ── Dark mode overrides ── */
@@ -17,24 +22,34 @@
   --background: #0f1117;
   --foreground: #e8e8e8;
   --primary: #2d9b6a;
+  --primary-dark: #1B6B4A;
   --primary-foreground: #ffffff;
   --secondary: #C8A84B;
+  --secondary-dark: #A8882E;
   --muted: #9ca3af;
   --border: #2a2d36;
   --card: #1a1d27;
   --destructive: #f87171;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #60a5fa;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-dark: var(--secondary-dark);
   --color-muted: var(--muted);
   --color-border: var(--border);
   --color-card: var(--card);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --font-arabic: var(--font-arabic);
 }
 
@@ -48,3 +63,87 @@ body {
 *, *::before, *::after {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
+
+/* ── Duolingo-style 3D button ── */
+.btn-duo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border-radius: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom-width: 4px;
+  border-style: solid;
+  transition: transform 0.1s ease, border-bottom-width 0.1s ease;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.01em;
+}
+.btn-duo:active {
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+}
+.btn-duo-primary {
+  background-color: var(--primary);
+  color: #fff;
+  border-color: var(--primary-dark);
+}
+.btn-duo-primary:hover { background-color: color-mix(in srgb, var(--primary) 90%, white); }
+.btn-duo-secondary {
+  background-color: var(--secondary);
+  color: #fff;
+  border-color: var(--secondary-dark);
+}
+.btn-duo-outline {
+  background-color: var(--card);
+  color: var(--primary);
+  border-color: var(--border);
+}
+.btn-duo-ghost {
+  background-color: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* ── Streak glow ── */
+.streak-glow {
+  text-shadow: 0 0 16px #ff9500aa;
+}
+
+/* ── Card hover lift ── */
+.card-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+}
+
+/* ── Animated progress bar ── */
+.progress-bar {
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Pulse dot ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.3); }
+}
+.pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+/* ── Ad banner progress bar ── */
+@keyframes progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
+/* ── Scrollbar hide ── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Float animation for hero ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.float-anim { animation: float 3s ease-in-out infinite; }

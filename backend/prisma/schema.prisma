@@ -39,6 +39,8 @@ model User {
   sentInvitations      Invitation[]       @relation("InvitationSender")
   receivedInvitations  Invitation[]       @relation("InvitationReceiver")
   auditLogs            AuditLog[]
+  authoredArticles     Article[]          @relation("ArticleAuthor")
+  suggestions          Suggestion[]       @relation("SuggestionUser")
 
   @@index([email])
   @@index([phone])
@@ -396,6 +398,97 @@ model AppSettings {
   updatedById             String?
 
   @@map("app_settings")
+}
+
+// ─────────────────────────────────────────
+// ADS
+// ─────────────────────────────────────────
+
+model Ad {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  linkUrl     String?
+  linkText    String?
+  bgColor     String?  @default("#1B6B4A")
+  textColor   String?  @default("#ffffff")
+  position    String   @default("HEADER_BANNER")
+  status      String   @default("ACTIVE")
+  priority    Int      @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  clickCount  Int      @default(0)
+  impressions Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([position, status])
+  @@map("ads")
+}
+
+// ─────────────────────────────────────────
+// ARTICLES (blog / SEO content)
+// ─────────────────────────────────────────
+
+model Article {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  titleAr     String
+  titleEn     String
+  contentAr   String        @db.Text
+  contentEn   String        @db.Text
+  excerptAr   String?       @db.Text
+  excerptEn   String?       @db.Text
+  coverImage  String?
+  status      ArticleStatus @default(DRAFT)
+  authorId    String?
+  tags        String?
+  metaDescAr  String?       @db.Text
+  metaDescEn  String?       @db.Text
+  viewCount   Int           @default(0)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  author User? @relation("ArticleAuthor", fields: [authorId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@map("articles")
+}
+
+enum ArticleStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// ─────────────────────────────────────────
+// SUGGESTIONS (user feedback)
+// ─────────────────────────────────────────
+
+model Suggestion {
+  id        String           @id @default(cuid())
+  userId    String?
+  name      String?
+  email     String?
+  content   String           @db.Text
+  status    SuggestionStatus @default(PENDING)
+  adminNote String?          @db.Text
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User? @relation("SuggestionUser", fields: [userId], references: [id])
+
+  @@index([status])
+  @@map("suggestions")
+}
+
+enum SuggestionStatus {
+  PENDING
+  REVIEWED
+  IMPLEMENTED
+  REJECTED
 }
 
 // ─────────────────────────────────────────

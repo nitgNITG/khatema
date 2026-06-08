@@ -536,4 +536,44 @@ export class KhatmaService {
       })),
     };
   }
+
+  // ── Public stats (used on landing page) ────────────────────────────
+  async getPublicStats() {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [totalCompleted, totalParticipants, totalActive, partsThisWeek] = await Promise.all([
+      this.db.khatma.count({ where: { status: 'COMPLETED', deletedAt: null } }),
+      this.db.khatmaParticipant.count({ where: { status: 'ACTIVE' } }),
+      this.db.khatma.count({ where: { status: 'ACTIVE', deletedAt: null } }),
+      this.db.reservedPart.count({
+        where: { status: 'COMPLETED', completedAt: { gte: weekAgo } },
+      }),
+    ]);
+    return { totalCompleted, totalParticipants, totalActive, partsThisWeek };
+  }
+
+  // ── Near-completion khatmas (landing page "ساهم الآن") ────────────────
+  async getNearCompletion(): Promise<any[]> {
+    const khatmas = await this.db.khatma.findMany({
+      where: { status: 'ACTIVE', visibility: 'PUBLIC', deletedAt: null, type: 'COLLECTIVE' },
+      include: {
+        creator: { select: { id: true, displayName: true } },
+        parts: { select: { status: true } },
+        _count: { select: { participants: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+    });
+
+    return khatmas
+      .map((k) => {
+        const completed = k.parts.filter((p: any) => p.status === 'COMPLETED').length;
+        const total = k.totalParts;
+        const remaining = total - completed;
+        const pct = Math.round((completed / total) * 100);
+        return { id: k.id, title: k.title, completedParts: completed, totalParts: total, completionPercentage: pct, remaining, participantCount: k._count.participants, creator: k.creator };
+      })
+      .filter((k) => k.completionPercentage >= 60 && k.remaining > 0)
+      .sort((a, b) => b.completionPercentage - a.completionPercentage)
+      .slice(0, 4);
+  }
 }
