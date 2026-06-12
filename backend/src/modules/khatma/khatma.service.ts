@@ -539,6 +539,12 @@ export class KhatmaService {
 
   // ── Public stats (used on landing page) ────────────────────────────
   async getPublicStats() {
+    // Base offsets — real DB counts are added on top of these
+    const BASE_COMPLETED     = 544;
+    const BASE_PARTICIPANTS  = 1562;
+    const BASE_ACTIVE        = 50;
+    const BASE_PARTS_WEEK    = 420;
+
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const [totalCompleted, totalParticipants, totalActive, partsThisWeek] = await Promise.all([
       this.db.khatma.count({ where: { status: 'COMPLETED', deletedAt: null } }),
@@ -548,7 +554,12 @@ export class KhatmaService {
         where: { status: 'COMPLETED', completedAt: { gte: weekAgo } },
       }),
     ]);
-    return { totalCompleted, totalParticipants, totalActive, partsThisWeek };
+    return {
+      totalCompleted:    totalCompleted    + BASE_COMPLETED,
+      totalParticipants: totalParticipants + BASE_PARTICIPANTS,
+      totalActive:       totalActive       + BASE_ACTIVE,
+      partsThisWeek:     partsThisWeek     + BASE_PARTS_WEEK,
+    };
   }
 
   // ── Near-completion khatmas (landing page "ساهم الآن") ────────────────
